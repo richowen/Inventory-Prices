@@ -241,6 +241,114 @@ Change it immediately in **Admin → Settings → Change Admin Password**.
 
 ---
 
+## Part 7 — Manual Deploy over Tailscale (SCP + SSH)
+
+This section keeps deployment simple: use **Tailscale + SCP + SSH** from your Windows PC, then run the deploy script on the Pi.
+
+### What this gives you
+
+- Secure remote access over your private Tailscale network
+- No router port forwarding
+- Simple manual deployment when you choose
+- Safe deploy sequence using `farmprices/deploy/remote_deploy.sh`
+
+### Step 16: Install and enable Tailscale on the Pi (one time)
+
+SSH to the Pi locally and run:
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up --ssh
+```
+
+In the Tailscale admin panel, confirm the Pi appears and note its Tailscale DNS name (for example `farmprices-pi.tailnet-name.ts.net`).
+
+### Step 17: Install Tailscale on your Windows PC (one time)
+
+1. Install Tailscale from https://tailscale.com/download
+2. Sign in to the same tailnet as the Pi
+3. Confirm you can reach the Pi over Tailscale:
+
+```powershell
+ssh richowen@farmprices-pi.tailnet-name.ts.net
+```
+
+### Step 18: Ensure deploy script is executable on Pi (one time)
+
+```bash
+chmod +x /home/richowen/farmprices/deploy/remote_deploy.sh
+```
+
+Ensure your SSH user can restart services without an interactive password prompt:
+
+```bash
+sudo visudo
+```
+
+Add this line (adjust username if needed):
+
+```text
+richowen ALL=(ALL) NOPASSWD:/bin/systemctl,/usr/bin/journalctl
+```
+
+### Step 19: Deploy from Windows PC (repeat for each update)
+
+From PowerShell on the Windows PC, upload your updated app folder with SCP:
+
+```powershell
+scp -r "C:\path\to\farmprices\*" richowen@farmprices-pi.tailnet-name.ts.net:/home/richowen/farmprices/
+```
+
+Then run the deploy script over SSH (forces SCP/manual mode by skipping git sync):
+
+```powershell
+ssh richowen@farmprices-pi.tailnet-name.ts.net "SKIP_GIT_SYNC=1 bash /home/richowen/farmprices/deploy/remote_deploy.sh"
+```
+
+The script will:
+
+1. Back up `prices.db`
+2. Update/validate runtime environment
+3. Install Python dependencies
+4. Run pre-restart checks
+5. Restart `farmprices` service
+6. Run local health check
+
+### Step 20: Verify deployment
+
+```powershell
+ssh richowen@farmprices-pi.tailnet-name.ts.net "sudo systemctl status farmprices --no-pager"
+ssh richowen@farmprices-pi.tailnet-name.ts.net "sudo journalctl -u farmprices -n 120 --no-pager"
+```
+
+Then test in browser:
+
+```text
+http://farmprices.local
+```
+
+### Step 21: Rollback procedure
+
+If deployment fails:
+
+```bash
+ssh richowen@farmprices-pi.tailnet-name.ts.net
+cd /home/richowen/farmprices
+git log --oneline -n 5
+git reset --hard <previous-good-commit>
+sudo systemctl restart farmprices
+```
+
+If needed, restore a DB backup (stored in `/home/richowen/farmprices/backups/`):
+
+```bash
+sudo systemctl stop farmprices
+cp /home/richowen/farmprices/backups/prices_deploy_YYYY-MM-DD_HHMMSS.db /home/richowen/farmprices/prices.db
+sudo systemctl start farmprices
+```
+
+---
+
 ## Maintenance
 
 ### Updating the app (after code changes)

@@ -1,0 +1,63 @@
+
+=======================================================
+  Tenbury Farm Supplies — Price Lookup App
+  Running at: http://localhost:5000
+  Admin:      http://localhost:5000/admin
+  Press Ctrl+C to stop
+=======================================================
+
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5000
+Press CTRL+C to quit
+127.0.0.1 - - [31/Mar/2026 08:43:11] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:11] "GET /static/css/style.css HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:11] "GET /favicon.ico HTTP/1.1" 404 -
+127.0.0.1 - - [31/Mar/2026 08:43:18] "GET /api/search?q=mi HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:19] "GET /api/search?q=milk HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:26] "GET /api/search?q=w HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:27] "GET /api/search?q=wr HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:27] "GET /api/search?q=wrap HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:31] "GET /admin/login HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:31] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:43:35] "POST /admin/login HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:43:35] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:44:06] "POST /admin/login HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:44:06] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:44:45] "POST /admin/login HTTP/1.1" 302 -
+127.0.0.1 - - [31/Mar/2026 08:44:45] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:44:45] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:44:53] "GET /admin/settings HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:44:53] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:00] "GET / HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:00] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:02] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:02] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:05] "GET /admin/products?q=&category=Fencing HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:05] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:10] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:10] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:12] "GET /admin/products/6/edit HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:12] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:13] "GET /api/search?q=__SETTINGS__ HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:34] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:34] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:36] "GET /admin/products/add HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:36] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:36] "GET /api/search?q=__SETTINGS__ HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:45] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:45] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:47] "GET /admin/products/add HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:47] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:45:47] "GET /api/search?q=__SETTINGS__ HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:55] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:45:55] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:47:33] "GET /admin/products/6/edit HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:47:33] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:47:34] "GET /api/search?q=__SETTINGS__ HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:47:47] "GET /admin/products HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:47:47] "GET /static/css/style.css HTTP/1.1" 304 -
+127.0.0.1 - - [31/Mar/2026 08:47:52] "GET /api/search?q=m HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:47:52] "GET /api/search?q=mi HTTP/1.1" 200 -
+127.0.0.1 - - [31/Mar/2026 08:47:52] "GET /api/search?q=milk HTTP/1.1" 200 -

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deleted Products — {{ shop_name }} Admin</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+<div class="admin-layout">
+
+  <aside class="admin-sidebar">
+    <div class="sidebar-brand">
+      <h2>🌿 {{ shop_name }}</h2>
+      <div class="brand-sub">Admin Panel</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin_products') }}">
+        <span class="nav-icon">📋</span> Products
+      </a>
+      <a href="{{ url_for('admin_history') }}">
+        <span class="nav-icon">📜</span> Audit History
+      </a>
+      <a href="{{ url_for('admin_deleted_products') }}" class="active">
+        <span class="nav-icon">🗑</span> Deleted Products
+      </a>
+      <a href="{{ url_for('admin_settings') }}">
+        <span class="nav-icon">⚙</span> Settings
+      </a>
+      <a href="{{ url_for('index') }}" target="_blank">
+        <span class="nav-icon">🔍</span> Price Lookup
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <a href="{{ url_for('admin_logout') }}">🚪 Log out</a>
+    </div>
+  </aside>
+
+  <div class="admin-main">
+    <div class="admin-topbar">
+      <h1>Deleted Products</h1>
+      <a href="{{ url_for('admin_products') }}" class="btn btn-secondary">← Back to Products</a>
+    </div>
+
+    <div class="admin-content">
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% if products %}
+        <p style="color:#888;font-size:0.85rem;margin-bottom:16px">
+          {{ products|length }} deleted product{{ 's' if products|length != 1 else '' }}.
+          Restore a product to make it visible again in the price lookup.
+        </p>
+        <div class="table-wrap">
+        <table class="product-table">
+          <thead>
+            <tr>
+              <th>Product Name</th>
+              <th>Category</th>
+              <th>Unit</th>
+              <th>Supplier</th>
+              <th>Cost / Sell</th>
+              <th>Last Active</th>
+              <th>Restore</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in products %}
+            <tr>
+              <td>
+                <strong>{{ p.name }}</strong>
+                {% if p.notes %}<br><small style="color:#aaa">{{ p.notes }}</small>{% endif %}
+              </td>
+              <td><span class="category-badge">{{ p.category }}</span></td>
+              <td style="color:#888">{{ p.unit }}</td>
+              <td>
+                <div style="font-size:0.88rem">{{ p.supplier_name or '—' }}</div>
+                {% if p.supplier_tel %}
+                  <div style="font-size:0.75rem;color:#aaa">{{ p.supplier_tel }}</div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="cost-cell">£{{ "%.2f"|format(p.cost_price) }}</div>
+                <div style="font-size:0.72rem;color:#aaa">sell: £{{ "%.2f"|format(p.sell_price) }}</div>
+              </td>
+              <td style="color:#aaa;font-size:0.82rem">{{ p.last_updated }}</td>
+              <td>
+                <form method="POST" action="{{ url_for('admin_restore_product', pid=p.id) }}">
+                  <button type="submit" class="btn btn-blue btn-sm"
+                          onclick="return confirm('Restore \'{{ p.name }}\' to the active catalogue?')">
+                    ♻ Restore
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+      {% else %}
+        <div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
+          <div class="no-results-icon">🗑</div>
+          <p>No deleted products.</p>
+          <p style="margin-top:8px;font-size:0.9rem;color:#aaa">
+            Products you remove will appear here and can be restored at any time.
+          </p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+</body>
+</html>

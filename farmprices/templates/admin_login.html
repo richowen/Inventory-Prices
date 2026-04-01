@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — {{ shop_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="login-page">
+  <div class="login-card">
+    <h1>🌿 {{ shop_name }}</h1>
+    <div class="login-sub">Admin Area — Enter Password</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="flash {{ category }}" style="margin-bottom:16px;text-align:left">{{ message }}</div>
+      {% endfor %}
+    {% endwith %}
+
+    <form method="POST">
+      <input
+        type="password"
+        name="password"
+        placeholder="••••••••"
+        autofocus
+        required
+      >
+      <button type="submit" class="btn btn-primary">Enter Admin</button>
+    </form>
+    <a href="{{ url_for('index') }}" class="login-back">← Back to Price Lookup</a>
+  </div>
+</body>
+</html>

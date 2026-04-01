@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Price List — {{ shop_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body { background: white; }
+
+    .pricelist-header {
+      background: var(--green-dark);
+      color: white;
+      padding: 24px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .pricelist-header h1 { font-size: 1.6rem; }
+    .pricelist-header .sub { font-size: 0.9rem; opacity: 0.8; margin-top: 4px; }
+
+    .no-print {
+      background: var(--amber-pale);
+      border-bottom: 2px solid var(--amber);
+      padding: 12px 32px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 0.9rem;
+    }
+
+    .pricelist-body {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 32px;
+    }
+
+    .category-section { margin-bottom: 32px; }
+    .category-heading {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--green-dark);
+      border-bottom: 2px solid var(--green-light);
+      padding-bottom: 6px;
+      margin-bottom: 12px;
+    }
+
+    .pl-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .pl-table th {
+      background: var(--green-pale);
+      color: var(--green-dark);
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 0.82rem;
+      font-weight: 700;
+      border-bottom: 1px solid var(--green-border);
+    }
+    .pl-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--grey-mid);
+      font-size: 0.9rem;
+    }
+    .pl-table tr:last-child td { border-bottom: none; }
+    .pl-table tr:nth-child(even) td { background: var(--grey-light); }
+
+    .pl-sell { font-weight: 700; color: var(--green-dark); font-size: 1rem; }
+    .pl-cost { color: var(--text-light); font-size: 0.82rem; }
+
+    .pricelist-footer {
+      text-align: center;
+      color: var(--text-light);
+      font-size: 0.8rem;
+      padding: 20px;
+      border-top: 1px solid var(--grey-mid);
+      margin-top: 20px;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      .pricelist-header { background: #1b5e20 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .category-heading { color: #1b5e20 !important; }
+      .pl-table th { background: #e8f5e9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .pl-table tr:nth-child(even) td { background: #fafafa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      body { font-size: 11pt; }
+      .category-section { page-break-inside: avoid; }
+    }
+
+    @media (max-width: 600px) {
+      .pricelist-header { padding: 16px; }
+      .pricelist-body { padding: 16px; }
+      .no-print { padding: 12px 16px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="no-print">
+    <span>🖨 This page is optimised for printing.</span>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">Print / Save as PDF</button>
+    <a href="{{ url_for('index') }}" class="btn btn-secondary btn-sm">← Back to Lookup</a>
+  </div>
+
+  <div class="pricelist-header">
+    <div>
+      <h1>🌿 {{ shop_name }}</h1>
+      <div class="sub">Current Price List — Generated {{ generated }}</div>
+    </div>
+  </div>
+
+  <div class="pricelist-body">
+    {% for category, items in by_category.items() %}
+    <div class="category-section">
+      <div class="category-heading">{{ category }}</div>
+      <table class="pl-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Unit</th>
+            <th>Sell Price</th>
+            <th>Cost Price</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in items %}
+          <tr>
+            <td>
+              <strong>{{ p.name }}</strong>
+              {% if p.notes %}<br><small style="color:#aaa">{{ p.notes }}</small>{% endif %}
+            </td>
+            <td style="color:#888">{{ p.unit }}</td>
+            <td><span class="pl-sell">£{{ "%.2f"|format(p.sell_price) }}</span></td>
+            <td><span class="pl-cost">£{{ "%.2f"|format(p.cost_price) }}</span></td>
+            <td style="color:#aaa;font-size:0.8rem">{{ p.last_updated }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% endfor %}
+  </div>
+
+  <div class="pricelist-footer">
+    {{ shop_name }} · Prices correct as of {{ generated }} · All prices include VAT where applicable
+  </div>
+
+</body>
+</html>

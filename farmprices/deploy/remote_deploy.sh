@@ -5,6 +5,7 @@ REPO_DIR="${REPO_DIR:-/home/richowen/Inventory-Prices}"
 APP_DIR="${APP_DIR:-$REPO_DIR/farmprices}"
 BRANCH="${BRANCH:-main}"
 SERVICE_NAME="${SERVICE_NAME:-farmprices}"
+REPO_URL="${REPO_URL:-}"
 BACKUP_DIR="$APP_DIR/backups"
 DB_PATH="$APP_DIR/prices.db"
 TS="$(date +%Y-%m-%d_%H%M%S)"
@@ -46,30 +47,25 @@ require_cmd python3
 require_cmd sudo
 ensure_git
 
-if [ ! -d "$REPO_DIR" ]; then
-    log "ERROR: Repo directory not found: $REPO_DIR"
-    exit 1
-fi
-
-if [ ! -d "$APP_DIR" ]; then
-    log "ERROR: App directory not found: $APP_DIR"
-    exit 1
+# ── Clone if the repo doesn't exist yet ──────────────────────────────────────
+if [ ! -d "$REPO_DIR/.git" ]; then
+    if [ -z "$REPO_URL" ]; then
+        log "ERROR: Repo not found at $REPO_DIR and REPO_URL is not set."
+        log "Pass REPO_URL=https://github.com/your/repo.git or clone manually first."
+        exit 1
+    fi
+    log "Repo not found — cloning $REPO_URL into $REPO_DIR"
+    git clone --branch "$BRANCH" "$REPO_URL" "$REPO_DIR"
+    log "Clone complete"
 fi
 
 cd "$REPO_DIR"
 
 mkdir -p "$BACKUP_DIR"
 
-CURRENT_COMMIT="n/a"
+CURRENT_COMMIT="$(git rev-parse --short HEAD)"
 TARGET_COMMIT="n/a"
-if [ -d ".git" ]; then
-    CURRENT_COMMIT="$(git rev-parse --short HEAD)"
-    log "Current commit: $CURRENT_COMMIT"
-else
-    log "ERROR: No git repository detected at $REPO_DIR (.git missing)"
-    log "Clone the repo first, then re-run deploy."
-    exit 1
-fi
+log "Current commit: $CURRENT_COMMIT"
 
 if [ -f "$DB_PATH" ]; then
     DB_BACKUP="$BACKUP_DIR/prices_deploy_${TS}.db"

@@ -106,14 +106,24 @@
 const rawHistory = {{ history|tojson }};
 const currency   = {{ currency|tojson }};
 
-// Build labels and datasets
-const labels = rawHistory.map(h => h.date.slice(0,10));
-const costs  = rawHistory.map(h => h.new);
+// Build a stepped price series.
+// Each history row means: "before this date the price was old_cost,
+// after this date it became new_cost."
+// So we plot: old_cost at the first change date, then new_cost at each
+// subsequent date, giving a proper step chart.
+const labels = [];
+const costs  = [];
 
-// Add current value as last point
 if (rawHistory.length) {
-  labels.push('{{ product.last_updated }}');
-  costs.push({{ product.cost_price }});
+  // Start: the price BEFORE the first change
+  labels.push(rawHistory[0].date.slice(0, 10));
+  costs.push(rawHistory[0].old);
+
+  // Each change: when it happened and what the new price became
+  rawHistory.forEach(h => {
+    labels.push(h.date.slice(0, 10));
+    costs.push(h.new);
+  });
 }
 
 const ctx = document.getElementById('priceChart').getContext('2d');
@@ -125,11 +135,15 @@ new Chart(ctx, {
       label: 'Cost Price',
       data: costs,
       borderColor: '#2e7d32',
-      backgroundColor: 'rgba(76,175,80,.1)',
-      borderWidth: 2,
-      tension: 0.1,
-      pointRadius: 4,
-      pointBackgroundColor: '#2e7d32',
+      backgroundColor: 'rgba(76,175,80,.08)',
+      borderWidth: 2.5,
+      stepped: 'before',   // flat line until the change date, then step
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      pointBackgroundColor: costs.map((v, i) => {
+        if (i === 0) return '#888';
+        return costs[i] > costs[i-1] ? '#c62828' : '#2e7d32';
+      }),
       fill: true,
     }]
   },
@@ -139,16 +153,29 @@ new Chart(ctx, {
       legend: { display: false },
       tooltip: {
         callbacks: {
-          label: ctx => currency + ctx.parsed.y.toFixed(2)
+          label: ctx => {
+            const i = ctx.dataIndex;
+            const prev = i > 0 ? costs[i-1] : null;
+            const curr = ctx.parsed.y;
+            let line = currency + curr.toFixed(2);
+            if (prev !== null && curr !== prev) {
+              const diff = curr - prev;
+              line += diff > 0
+                ? `  ▲ +${currency}${diff.toFixed(2)}`
+                : `  ▼ −${currency}${Math.abs(diff).toFixed(2)}`;
+            }
+            return line;
+          }
         }
       }
     },
     scales: {
       y: {
-        ticks: { callback: v => currency + v.toFixed(2) }
+        ticks: { callback: v => currency + v.toFixed(2) },
+        grace: '10%'
       },
       x: {
-        ticks: { maxTicksLimit: 8 }
+        ticks: { maxTicksLimit: 10 }
       }
     }
   }

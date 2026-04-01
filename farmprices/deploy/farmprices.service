@@ -11,8 +11,11 @@ Group=richowen
 WorkingDirectory=/home/richowen/Inventory-Prices/farmprices
 Environment="PATH=/home/richowen/Inventory-Prices/farmprices/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
-# Initialise the database before starting
-ExecStartPre=/home/richowen/Inventory-Prices/farmprices/venv/bin/python -c "import sys; sys.path.insert(0, '/home/richowen/Inventory-Prices/farmprices'); import app; app.init_db()"
+# Initialise / migrate the database before starting
+ExecStartPre=/home/richowen/Inventory-Prices/farmprices/venv/bin/python -c \
+    "import sys; sys.path.insert(0, '/home/richowen/Inventory-Prices/farmprices'); \
+     from app import create_app; from db import init_db; \
+     app = create_app(); app.app_context().push(); init_db(app)"
 
 # Start Gunicorn with 4 workers
 ExecStart=/home/richowen/Inventory-Prices/farmprices/venv/bin/gunicorn \
@@ -22,7 +25,7 @@ ExecStart=/home/richowen/Inventory-Prices/farmprices/venv/bin/gunicorn \
     --access-logfile /home/richowen/Inventory-Prices/farmprices/app.log \
     --error-logfile /home/richowen/Inventory-Prices/farmprices/app.log \
     --log-level info \
-    app:app
+    "app:create_app()"
 
 # Restart automatically if it crashes
 Restart=on-failure

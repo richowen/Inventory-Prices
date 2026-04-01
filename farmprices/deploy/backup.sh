@@ -16,7 +16,7 @@ set -euo pipefail
 # ── Config ────────────────────────────────────────────────────────────────────
 DB_PATH="/home/richowen/Inventory-Prices/farmprices/prices.db"
 BACKUP_DIR="/home/richowen/Inventory-Prices/farmprices/backups"
-UNRAID_HOST="server.west-stonecat.ts.net"   # Tailscale hostname of Unraid
+UNRAID_HOST="server"                         # Tailscale hostname of Unraid
 LOCAL_KEEP_DAYS=7                            # Days to keep backups on Pi
 LOG="$BACKUP_DIR/backup.log"
 TS=$(date +%Y-%m-%d_%H%M)

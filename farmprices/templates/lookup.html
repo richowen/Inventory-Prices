@@ -6,206 +6,107 @@
   <title>{{ shop_name }} — Price Lookup</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <style>
-    /* ── Lookup page overrides ── */
-    .lookup-page { display: flex; flex-direction: column; min-height: 100vh; }
-
-    /* Sticky search section */
-    .search-section {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-    }
-
-    /* Clear button inside search wrapper */
+    .lookup-page { display:flex; flex-direction:column; min-height:100vh; }
+    .search-section { position:sticky; top:0; z-index:20; box-shadow:0 2px 8px rgba(0,0,0,.15); }
     .search-clear {
-      position: absolute;
-      right: 52px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: none;
-      border: none;
-      font-size: 1.2rem;
-      color: #aaa;
-      cursor: pointer;
-      padding: 4px;
-      display: none;
-      line-height: 1;
+      position:absolute; right:52px; top:50%; transform:translateY(-50%);
+      background:none; border:none; font-size:1.2rem; color:#aaa;
+      cursor:pointer; padding:4px; display:none; line-height:1;
     }
-    .search-clear:hover { color: var(--text-dark); }
-    .search-clear.visible { display: block; }
-
-    /* Category pills */
+    .search-clear:hover { color:var(--text-dark); }
+    .search-clear.visible { display:block; }
     .category-pills {
-      background: var(--green-mid);
-      padding: 0 32px 14px;
-      display: flex;
-      gap: 8px;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
+      background:var(--green-mid); padding:0 32px 14px;
+      display:flex; gap:8px; overflow-x:auto;
+      -webkit-overflow-scrolling:touch; scrollbar-width:none;
     }
-    .category-pills::-webkit-scrollbar { display: none; }
-
+    .category-pills::-webkit-scrollbar { display:none; }
     .cat-pill {
-      flex-shrink: 0;
-      padding: 7px 16px;
-      border-radius: 20px;
-      border: 2px solid rgba(255,255,255,0.4);
-      background: transparent;
-      color: rgba(255,255,255,0.85);
-      font-size: 0.88rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-      white-space: nowrap;
-      min-height: 36px;
+      flex-shrink:0; padding:7px 16px; border-radius:20px;
+      border:2px solid rgba(255,255,255,.4); background:transparent;
+      color:rgba(255,255,255,.85); font-size:.88rem; font-weight:600;
+      cursor:pointer; transition:all .15s; white-space:nowrap; min-height:36px;
     }
-    .cat-pill:hover {
-      background: rgba(255,255,255,0.15);
-      color: white;
-      border-color: rgba(255,255,255,0.7);
-    }
-    .cat-pill.active {
-      background: white;
-      color: var(--green-dark);
-      border-color: white;
-    }
-
-    /* Result cards */
-    .result-card {
-      border-left: 4px solid var(--green-light);
-      cursor: default;
-    }
-
-    /* Price block — sell price is now the BIG number */
-    .price-block {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      min-width: 160px;
-      gap: 2px;
-    }
-    .sell-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--text-light);
-    }
-    .sell-price-big {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--green-dark);
-      line-height: 1;
-    }
-    .cost-price-small {
-      font-size: 0.8rem;
-      color: var(--text-light);
-    }
-    .per-unit-small {
-      font-size: 0.78rem;
-      color: var(--text-light);
-    }
-
-    /* Recently updated badge */
+    .cat-pill:hover { background:rgba(255,255,255,.15); color:white; border-color:rgba(255,255,255,.7); }
+    .cat-pill.active { background:white; color:var(--green-dark); border-color:white; }
+    .result-card { border-left:4px solid var(--green-light); cursor:default; }
+    .price-block { display:flex; flex-direction:column; align-items:flex-end; min-width:160px; gap:2px; }
+    .sell-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-light); }
+    .sell-price-big { font-size:2rem; font-weight:800; color:var(--green-dark); line-height:1; }
+    .cost-price-small { font-size:.8rem; color:var(--text-light); }
+    .per-unit-small { font-size:.78rem; color:var(--text-light); }
     .new-badge {
-      display: inline-block;
-      background: var(--amber);
-      color: white;
-      font-size: 0.65rem;
-      font-weight: 700;
-      padding: 1px 6px;
-      border-radius: 8px;
-      vertical-align: middle;
-      margin-left: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
+      display:inline-block; background:var(--amber); color:white;
+      font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:8px;
+      vertical-align:middle; margin-left:6px; text-transform:uppercase; letter-spacing:.3px;
     }
-
-    /* ── Tablet (768px – 1024px) ── */
-    @media (min-width: 701px) and (max-width: 1024px) {
-      .lookup-header { padding: 16px 24px; }
-      .lookup-header h1 { font-size: 1.4rem; }
-      .search-section { padding: 20px 24px; }
-      .search-input { font-size: 1.2rem; padding: 16px 52px 16px 18px; }
-      .category-pills { padding: 0 24px 12px; }
-      .results-section { padding: 16px 24px; }
-      .result-card { padding: 14px 16px; }
-      .sell-price-big { font-size: 1.7rem; }
+    .low-stock-badge {
+      display:inline-block; background:var(--red); color:white;
+      font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:8px;
+      vertical-align:middle; margin-left:4px; text-transform:uppercase;
     }
-
-    /* ── Mobile (≤700px) ── */
-    @media (max-width: 700px) {
-      .lookup-header { padding: 12px 16px; }
-      .lookup-header h1 { font-size: 1.15rem; }
-      .search-section { padding: 14px 16px; }
-      .search-input { font-size: 1.1rem; padding: 14px 80px 14px 14px; }
-      .category-pills { padding: 0 16px 12px; gap: 6px; }
-      .cat-pill { padding: 6px 12px; font-size: 0.82rem; }
-      .results-section { padding: 12px 16px; }
-      .result-card {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 10px;
-        padding: 14px 16px;
-      }
+    @media (min-width:701px) and (max-width:1024px) {
+      .lookup-header { padding:16px 24px; }
+      .lookup-header h1 { font-size:1.4rem; }
+      .search-section { padding:20px 24px; }
+      .search-input { font-size:1.2rem; padding:16px 52px 16px 18px; }
+      .category-pills { padding:0 24px 12px; }
+      .results-section { padding:16px 24px; }
+      .result-card { padding:14px 16px; }
+      .sell-price-big { font-size:1.7rem; }
+    }
+    @media (max-width:700px) {
+      .lookup-header { padding:12px 16px; }
+      .lookup-header h1 { font-size:1.15rem; }
+      .search-section { padding:14px 16px; }
+      .search-input { font-size:1.1rem; padding:14px 80px 14px 14px; }
+      .category-pills { padding:0 16px 12px; gap:6px; }
+      .cat-pill { padding:6px 12px; font-size:.82rem; }
+      .results-section { padding:12px 16px; }
+      .result-card { flex-direction:column; align-items:stretch; gap:10px; padding:14px 16px; }
       .price-block {
-        flex-direction: row;
-        align-items: center;
-        justify-content: space-between;
-        min-width: unset;
-        border-top: 1px solid var(--grey-mid);
-        padding-top: 10px;
+        flex-direction:row; align-items:center; justify-content:space-between;
+        min-width:unset; border-top:1px solid var(--grey-mid); padding-top:10px;
       }
-      .sell-price-big { font-size: 1.6rem; }
-      .sell-label { font-size: 0.7rem; }
+      .sell-price-big { font-size:1.6rem; }
     }
   </style>
 </head>
 <body class="lookup-page">
 
-  <!-- Header -->
   <header class="lookup-header">
     <div>
       <h1>🌿 {{ shop_name }}</h1>
       <div class="tagline">Price Lookup</div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
-      <a href="{{ url_for('pricelist') }}" class="admin-link" target="_blank">🖨 Price List</a>
-      <a href="{{ url_for('admin_products') }}" class="admin-link">Admin</a>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+      <a href="{{ url_for('public.pricelist') }}" class="admin-link" target="_blank">🖨 Price List</a>
+      {% if is_admin %}
+        <a href="{{ url_for('admin.products') }}" class="admin-link">⚙ Admin</a>
+      {% endif %}
+      <a href="{{ url_for('auth.logout') }}" class="admin-link">🚪 {{ username }}</a>
     </div>
   </header>
 
-  <!-- Search + category pills (sticky) -->
   <section class="search-section">
     <label class="search-label" for="searchInput">What are you looking for?</label>
     <div class="search-wrapper">
-      <input
-        type="text"
-        id="searchInput"
-        class="search-input"
-        placeholder="e.g. cattle nuts, straw bale, muck fork..."
-        autocomplete="off"
-        autofocus
-        spellcheck="false"
-        inputmode="search"
-      >
-      <button class="search-clear" id="searchClear" title="Clear search" aria-label="Clear search">✕</button>
+      <input type="text" id="searchInput" class="search-input"
+             placeholder="e.g. cattle nuts, straw bale… or scan barcode"
+             autocomplete="off" autofocus spellcheck="false" inputmode="search">
+      <button class="search-clear" id="searchClear" title="Clear" aria-label="Clear">✕</button>
       <span class="search-icon">🔍</span>
     </div>
-    <div class="search-hint">Type to search · or browse by category below</div>
+    <div class="search-hint">Type to search · scan a barcode · or browse by category</div>
   </section>
 
-  <!-- Category pills -->
   <div class="category-pills" id="categoryPills">
-    <button class="cat-pill active" data-cat="" onclick="selectCategory(this, '')">All</button>
+    <button class="cat-pill active" data-cat="" onclick="selectCategory(this,'')">All</button>
     {% for cat in categories %}
-    <button class="cat-pill" data-cat="{{ cat }}" onclick="selectCategory(this, '{{ cat }}')">{{ cat }}</button>
+    <button class="cat-pill" data-cat="{{ cat }}" onclick="selectCategory(this,'{{ cat }}')">{{ cat }}</button>
     {% endfor %}
   </div>
 
-  <!-- Results -->
   <main class="results-section">
     <div class="results-count" id="resultsCount"></div>
     <div id="resultsContainer">
@@ -217,160 +118,108 @@
   </main>
 
   <script>
+    const IS_ADMIN     = {{ 'true' if is_admin else 'false' }};
     const searchInput  = document.getElementById('searchInput');
     const searchClear  = document.getElementById('searchClear');
     const resultsDiv   = document.getElementById('resultsContainer');
     const resultsCount = document.getElementById('resultsCount');
+    let debounceTimer  = null;
+    let lastQuery      = null;
+    let activeCategory = '';
 
-    let debounceTimer    = null;
-    let lastQuery        = null;
-    let lastCategory     = '';
-    let activeCategory   = '';
-
-    function fmt(n) {
-      return '£' + parseFloat(n).toFixed(2);
-    }
-
+    function fmt(n) { return '£' + parseFloat(n).toFixed(2); }
     function escHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-
     function highlight(text, query) {
       if (!query) return escHtml(text);
-      const safeText     = escHtml(text);
-      const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      return safeText.replace(new RegExp('(' + escapedQuery + ')', 'gi'),
-                          '<mark style="background:#fff176;border-radius:2px">$1</mark>');
+      const safe = escHtml(text);
+      const esc  = query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      return safe.replace(new RegExp('('+esc+')','gi'),'<mark style="background:#fff176;border-radius:2px">$1</mark>');
     }
-
     function renderResults(data, query) {
       resultsDiv.innerHTML = '';
-
       if (data.length === 0) {
         resultsCount.innerHTML = '';
-        const msg = query
-          ? `No products found for <strong>"${escHtml(query)}"</strong>`
-          : activeCategory
-            ? `No products in <strong>${escHtml(activeCategory)}</strong>`
-            : 'No products found.';
-        resultsDiv.innerHTML = `
-          <div class="no-results">
-            <div class="no-results-icon">🔍</div>
-            <p>${msg}</p>
-            <p style="margin-top:8px;font-size:0.9rem;color:#aaa">Try a different spelling or category</p>
-          </div>`;
+        const msg = query ? `No products found for <strong>"${escHtml(query)}"</strong>`
+          : activeCategory ? `No products in <strong>${escHtml(activeCategory)}</strong>` : 'No products found.';
+        resultsDiv.innerHTML = `<div class="no-results"><div class="no-results-icon">🔍</div><p>${msg}</p>
+          <p style="margin-top:8px;font-size:.9rem;color:#aaa">Try a different spelling or category</p></div>`;
         return;
       }
-
-      const count = data.length;
-      resultsCount.innerHTML = `<strong>${count}</strong> product${count !== 1 ? 's' : ''} found`;
-
+      resultsCount.innerHTML = `<strong>${data.length}</strong> product${data.length!==1?'s':''} found`;
       data.forEach(item => {
         const card = document.createElement('div');
         card.className = 'result-card';
-        const safeName     = highlight(item.name, query);
-        const safeCategory = escHtml(item.category);
-        const safeUnit     = escHtml(item.unit);
-        const newBadge     = item.recently_updated
-          ? '<span class="new-badge">Updated</span>'
-          : '';
-
+        const newBadge = item.recently_updated ? '<span class="new-badge">Updated</span>' : '';
+        const lowBadge = item.low_stock ? '<span class="low-stock-badge">Low Stock</span>' : '';
+        const costLine = IS_ADMIN && item.cost_price !== undefined
+          ? `<div class="cost-price-small">Cost: ${fmt(item.cost_price)}</div>` : '';
         card.innerHTML = `
           <div class="result-info" style="flex:1">
-            <div class="result-name">${safeName}${newBadge}</div>
-            <div class="result-meta">${safeCategory} &nbsp;·&nbsp; per ${safeUnit}</div>
+            <div class="result-name">${highlight(item.name,query)}${newBadge}${lowBadge}</div>
+            <div class="result-meta">${escHtml(item.category)} &nbsp;·&nbsp; per ${escHtml(item.unit)}</div>
+            ${item.barcode?`<div style="font-size:.72rem;color:#ccc;margin-top:2px">🔲 ${escHtml(item.barcode)}</div>`:''}
           </div>
           <div class="price-block">
             <div>
               <div class="sell-label">Sell price</div>
               <div class="sell-price-big">${fmt(item.sell_price)}</div>
-              <div class="per-unit-small">per ${safeUnit}</div>
+              <div class="per-unit-small">per ${escHtml(item.unit)}</div>
             </div>
-            <div style="text-align:right;margin-left:12px">
-              <div class="cost-price-small">Cost: ${fmt(item.cost_price)}</div>
-            </div>
+            <div style="text-align:right;margin-left:12px">${costLine}</div>
           </div>`;
         resultsDiv.appendChild(card);
       });
     }
-
     function doSearch(query, category) {
-      const cacheKey = query + '|' + category;
-      if (cacheKey === lastQuery) return;
-      lastQuery = cacheKey;
-
-      const hasQuery    = query.trim() !== '';
-      const hasCategory = category !== '';
-
-      if (!hasQuery && !hasCategory) {
-        resultsDiv.innerHTML = `
-          <div class="no-results">
-            <div class="no-results-icon">🌾</div>
-            <p>Start typing above or tap a category to browse</p>
-          </div>`;
-        resultsCount.innerHTML = '';
-        return;
+      const key = query+'|'+category;
+      if (key === lastQuery) return;
+      lastQuery = key;
+      const hasQ = query.trim() !== '', hasCat = category !== '';
+      if (!hasQ && !hasCat) {
+        resultsDiv.innerHTML = `<div class="no-results"><div class="no-results-icon">🌾</div>
+          <p>Start typing above or tap a category to browse</p></div>`;
+        resultsCount.innerHTML = ''; return;
       }
-
       resultsDiv.innerHTML = '<div class="loading">Searching…</div>';
-
-      const ts = Date.now();
-      let url = `/api/search?_=${ts}`;
-      if (hasQuery)    url += `&q=${encodeURIComponent(query)}`;
-      if (hasCategory) url += `&category=${encodeURIComponent(category)}`;
-
-      fetch(url)
-        .then(r => r.json())
-        .then(data => renderResults(data, query))
-        .catch(() => {
-          resultsDiv.innerHTML = '<div class="no-results"><p>Error loading results. Please refresh.</p></div>';
-        });
+      let url = `/api/search?_=${Date.now()}`;
+      if (hasQ)   url += `&q=${encodeURIComponent(query)}`;
+      if (hasCat) url += `&category=${encodeURIComponent(category)}`;
+      fetch(url).then(r=>r.json()).then(data=>renderResults(data,query))
+        .catch(()=>{ resultsDiv.innerHTML='<div class="no-results"><p>Error loading results. Please refresh.</p></div>'; });
     }
-
-    function selectCategory(btn, cat) {
-      // Update pill active state
-      document.querySelectorAll('.cat-pill').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      activeCategory = cat;
-      lastQuery = null;
-      doSearch(searchInput.value, cat);
-    }
-
-    // Search input events
-    searchInput.addEventListener('input', () => {
-      clearTimeout(debounceTimer);
-      lastQuery = null;
-      const hasText = searchInput.value.length > 0;
-      searchClear.classList.toggle('visible', hasText);
-      debounceTimer = setTimeout(() => doSearch(searchInput.value, activeCategory), 120);
-    });
-
-    searchInput.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        searchInput.value = '';
-        searchClear.classList.remove('visible');
-        lastQuery = null;
-        doSearch('', activeCategory);
+    // Barcode scanner — rapid keystrokes ending in Enter
+    let barcodeBuffer='', barcodeTimer=null;
+    document.addEventListener('keydown', e => {
+      if (document.activeElement===searchInput) return;
+      if (e.key==='Enter' && barcodeBuffer.length>3) {
+        e.preventDefault();
+        const code=barcodeBuffer; barcodeBuffer='';
+        searchInput.value=code; searchClear.classList.add('visible'); lastQuery=null;
+        fetch(`/api/search?barcode=${encodeURIComponent(code)}`).then(r=>r.json()).then(data=>{
+          resultsCount.innerHTML=`<strong>${data.length}</strong> result${data.length!==1?'s':''} for barcode <code>${escHtml(code)}</code>`;
+          renderResults(data,'');
+        }); return;
       }
+      if (e.key.length===1) { barcodeBuffer+=e.key; clearTimeout(barcodeTimer); barcodeTimer=setTimeout(()=>{barcodeBuffer='';},100); }
     });
-
-    searchClear.addEventListener('click', () => {
-      searchInput.value = '';
-      searchClear.classList.remove('visible');
-      lastQuery = null;
-      searchInput.focus();
-      doSearch('', activeCategory);
+    function selectCategory(btn,cat) {
+      document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active'); activeCategory=cat; lastQuery=null; doSearch(searchInput.value,cat);
+    }
+    searchInput.addEventListener('input',()=>{
+      clearTimeout(debounceTimer); lastQuery=null;
+      searchClear.classList.toggle('visible',searchInput.value.length>0);
+      debounceTimer=setTimeout(()=>doSearch(searchInput.value,activeCategory),120);
     });
-
-    // Re-fetch when window regains focus (user switches back from admin tab)
-    window.addEventListener('focus', () => {
-      lastQuery = null;
-      doSearch(searchInput.value, activeCategory);
+    searchInput.addEventListener('keydown',e=>{
+      if (e.key==='Escape'){ searchInput.value=''; searchClear.classList.remove('visible'); lastQuery=null; doSearch('',activeCategory); }
     });
+    searchClear.addEventListener('click',()=>{
+      searchInput.value=''; searchClear.classList.remove('visible'); lastQuery=null; searchInput.focus(); doSearch('',activeCategory);
+    });
+    window.addEventListener('focus',()=>{ lastQuery=null; doSearch(searchInput.value,activeCategory); });
   </script>
 </body>
 </html>

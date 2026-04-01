@@ -1,266 +1,191 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Audit History — {{ shop_name }} Admin</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    .event-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 10px; border-radius: 12px;
-      font-size: 0.78rem; font-weight: 700; white-space: nowrap;
-    }
-    .ev-product_added    { background:#e8f5e9; color:#1b5e20; }
-    .ev-product_edited   { background:#fff8e1; color:#e65100; }
-    .ev-product_deleted  { background:#ffebee; color:#b71c1c; }
-    .ev-product_restored { background:#e3f2fd; color:#0d47a1; }
-    .ev-price_changed    { background:#fff3e0; color:#bf360c; }
-    .ev-category_added   { background:#f3e5f5; color:#4a148c; }
-    .ev-category_deleted { background:#fce4ec; color:#880e4f; }
-    .ev-unit_added       { background:#e0f7fa; color:#006064; }
-    .ev-unit_deleted     { background:#fce4ec; color:#880e4f; }
-    .ev-settings_changed { background:#e8eaf6; color:#1a237e; }
-    .ev-admin_login      { background:#e8f5e9; color:#2e7d32; }
-    .ev-admin_logout     { background:#f5f5f5; color:#555; }
+{% extends "base_admin.html" %}
+{% block title %}Audit History{% endblock %}
+{% block page_title %}Audit History{% endblock %}
 
-    .diff-table { font-size:0.8rem; border-collapse:collapse; margin-top:6px; }
-    .diff-table td { padding:2px 8px; border:1px solid #e0e0e0; }
-    .diff-table .diff-field { font-weight:600; color:#555; background:#fafafa; }
-    .diff-table .diff-old   { color:#c62828; background:#fff8f8; }
-    .diff-table .diff-new   { color:#2e7d32; background:#f8fff8; }
+{% block head %}
+<style>
+  .event-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:.78rem;font-weight:700;white-space:nowrap}
+  .ev-product_added{background:#e8f5e9;color:#1b5e20}.ev-product_edited{background:#fff8e1;color:#e65100}
+  .ev-product_deleted{background:#ffebee;color:#b71c1c}.ev-product_restored{background:#e3f2fd;color:#0d47a1}
+  .ev-price_changed{background:#fff3e0;color:#bf360c}.ev-category_added{background:#f3e5f5;color:#4a148c}
+  .ev-category_deleted,.ev-unit_deleted{background:#fce4ec;color:#880e4f}
+  .ev-unit_added{background:#e0f7fa;color:#006064}.ev-settings_changed{background:#e8eaf6;color:#1a237e}
+  .ev-admin_login{background:#e8f5e9;color:#2e7d32}.ev-admin_logout{background:#f5f5f5;color:#555}
+  .ev-user_added{background:#e3f2fd;color:#1565c0}.ev-user_edited{background:#e8eaf6;color:#283593}.ev-user_deleted{background:#ffebee;color:#b71c1c}
+  .ev-supplier_added{background:#f1f8e9;color:#33691e}.ev-supplier_edited{background:#f9fbe7;color:#558b2f}.ev-supplier_deleted{background:#fce4ec;color:#880e4f}
+  .diff-table{font-size:.8rem;border-collapse:collapse;margin-top:6px}
+  .diff-table td{padding:2px 8px;border:1px solid #e0e0e0}
+  .diff-table .diff-field{font-weight:600;color:#555;background:#fafafa}
+  .diff-table .diff-old{color:#c62828;background:#fff8f8}.diff-table .diff-new{color:#2e7d32;background:#f8fff8}
+  .snapshot-box{background:#fff8f8;border:1px solid #ffcdd2;border-radius:6px;padding:10px 14px;margin-top:6px;font-size:.8rem}
+  .snapshot-box strong{color:#b71c1c}
+  .detail-toggle{font-size:.75rem;color:var(--blue);cursor:pointer;text-decoration:underline;background:none;border:none;padding:0}
+  .detail-panel{display:none}.detail-panel.open{display:block}
+  .history-row td{vertical-align:top}.history-row:hover td{background:var(--green-pale)}
+  .pagination{display:flex;gap:8px;align-items:center;margin-top:16px;flex-wrap:wrap}
+  .pagination a,.pagination span{padding:5px 12px;border-radius:6px;font-size:.85rem;font-weight:600;text-decoration:none;border:1px solid var(--grey-mid)}
+  .pagination a{background:white;color:var(--green-dark)}.pagination a:hover{background:var(--green-pale)}
+  .pagination .current{background:var(--green-mid);color:white;border-color:var(--green-mid)}
+  .pagination .disabled{color:#ccc;pointer-events:none}
+</style>
+{% endblock %}
 
-    .snapshot-box {
-      background:#fff8f8; border:1px solid #ffcdd2; border-radius:6px;
-      padding:10px 14px; margin-top:6px; font-size:0.8rem;
-    }
-    .snapshot-box strong { color:#b71c1c; }
+{% block content %}
+{% set active_nav = 'history' %}
 
-    .filter-bar {
-      background:white; border-radius:var(--radius); box-shadow:var(--shadow);
-      padding:16px 20px; margin-bottom:20px;
-      display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
-    }
-    .filter-bar label { font-size:0.8rem; font-weight:600; color:#555; display:block; margin-bottom:3px; }
-    .filter-bar input, .filter-bar select {
-      padding:7px 10px; border:1px solid var(--grey-mid); border-radius:6px;
-      font-size:0.88rem; outline:none;
-    }
-    .filter-bar input:focus, .filter-bar select:focus { border-color:var(--green-light); }
-
-    .history-row td { vertical-align:top; }
-    .history-row:hover td { background:var(--green-pale); }
-
-    .detail-toggle {
-      font-size:0.75rem; color:var(--blue); cursor:pointer;
-      text-decoration:underline; background:none; border:none; padding:0;
-    }
-    .detail-panel { display:none; }
-    .detail-panel.open { display:block; }
-  </style>
-</head>
-<body>
-<div class="admin-layout">
-
-  <aside class="admin-sidebar">
-    <div class="sidebar-brand">
-      <h2>🌿 {{ shop_name }}</h2>
-      <div class="brand-sub">Admin Panel</div>
-    </div>
-    <nav class="sidebar-nav">
-      <a href="{{ url_for('admin_products') }}">
-        <span class="nav-icon">📋</span> Products
-      </a>
-      <a href="{{ url_for('admin_history') }}" class="active">
-        <span class="nav-icon">📜</span> Audit History
-      </a>
-      <a href="{{ url_for('admin_deleted_products') }}">
-        <span class="nav-icon">🗑</span> Deleted Products
-      </a>
-      <a href="{{ url_for('admin_settings') }}">
-        <span class="nav-icon">⚙</span> Settings
-      </a>
-      <a href="{{ url_for('index') }}" target="_blank">
-        <span class="nav-icon">🔍</span> Price Lookup
-      </a>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="{{ url_for('admin_logout') }}">🚪 Log out</a>
-    </div>
-  </aside>
-
-  <div class="admin-main">
-    <div class="admin-topbar">
-      <h1>Audit History</h1>
-    </div>
-
-    <div class="admin-content">
-
-      <!-- Filter bar -->
-      <form method="GET" class="filter-bar">
-        <div>
-          <label>Event Type</label>
-          <select name="event_type">
-            <option value="">All Events</option>
-            {% for et in event_types %}
-              <option value="{{ et }}" {% if et == event_filter %}selected{% endif %}>
-                {{ et.replace('_', ' ').title() }}
-              </option>
-            {% endfor %}
-          </select>
-        </div>
-        <div>
-          <label>Product Name</label>
-          <input type="text" name="product" value="{{ product_filter }}" placeholder="Search product…">
-        </div>
-        <div>
-          <label>From Date</label>
-          <input type="date" name="date_from" value="{{ date_from }}">
-        </div>
-        <div>
-          <label>To Date</label>
-          <input type="date" name="date_to" value="{{ date_to }}">
-        </div>
-        <div style="display:flex;gap:8px;align-items:flex-end">
-          <button type="submit" class="btn btn-primary btn-sm">Filter</button>
-          <a href="{{ url_for('admin_history') }}" class="btn btn-secondary btn-sm">Clear</a>
-        </div>
-      </form>
-
-      {% if history %}
-        <p style="color:#888;font-size:0.85rem;margin-bottom:12px">
-          Showing <strong>{{ history|length }}</strong> event{{ 's' if history|length != 1 else '' }}, most recent first.
-        </p>
-        <div class="table-wrap">
-        <table class="history-table" style="table-layout:auto">
-          <thead>
-            <tr>
-              <th style="width:150px">Date &amp; Time</th>
-              <th style="width:130px">Event</th>
-              <th>Product / Subject</th>
-              <th style="width:110px">Changed By</th>
-              <th>Notes / Detail</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for h in history %}
-            <tr class="history-row">
-              <td style="white-space:nowrap;color:#888;font-size:0.82rem">{{ h.changed_at }}</td>
-              <td>
-                <span class="event-badge ev-{{ h.event_type }}">
-                  {% if h.event_type == 'product_added' %}➕ Added
-                  {% elif h.event_type == 'product_edited' %}✏ Edited
-                  {% elif h.event_type == 'product_deleted' %}🗑 Deleted
-                  {% elif h.event_type == 'product_restored' %}♻ Restored
-                  {% elif h.event_type == 'price_changed' %}💰 Price
-                  {% elif h.event_type == 'category_added' %}📁 Cat+
-                  {% elif h.event_type == 'category_deleted' %}📁 Cat−
-                  {% elif h.event_type == 'unit_added' %}📐 Unit+
-                  {% elif h.event_type == 'unit_deleted' %}📐 Unit−
-                  {% elif h.event_type == 'settings_changed' %}⚙ Settings
-                  {% elif h.event_type == 'admin_login' %}🔑 Login
-                  {% elif h.event_type == 'admin_logout' %}🚪 Logout
-                  {% else %}{{ h.event_type }}
-                  {% endif %}
-                </span>
-              </td>
-              <td>
-                {% if h.product_name %}
-                  <strong>{{ h.product_name }}</strong>
-                {% else %}
-                  <span style="color:#aaa">—</span>
-                {% endif %}
-
-                {# Price change: show old → new inline #}
-                {% if h.event_type == 'price_changed' and h.old_data and h.new_data %}
-                  <div style="margin-top:4px;font-size:0.82rem">
-                    <span style="color:#c62828">£{{ "%.2f"|format(h.old_data.cost_price) }}</span>
-                    → <span style="color:#2e7d32;font-weight:700">£{{ "%.2f"|format(h.new_data.cost_price) }}</span>
-                    {% set diff = h.new_data.cost_price - h.old_data.cost_price %}
-                    {% if diff > 0 %}
-                      <span class="price-up" style="font-size:0.78rem">(+£{{ "%.2f"|format(diff) }})</span>
-                    {% elif diff < 0 %}
-                      <span class="price-down" style="font-size:0.78rem">(−£{{ "%.2f"|format(diff|abs) }})</span>
-                    {% endif %}
-                  </div>
-                {% endif %}
-
-                {# Deleted product: show snapshot toggle #}
-                {% if h.event_type == 'product_deleted' and h.old_data %}
-                  <div style="margin-top:4px">
-                    <button class="detail-toggle" onclick="toggleDetail({{ h.id }})">
-                      📋 View deleted product details
-                    </button>
-                    <div class="detail-panel" id="detail-{{ h.id }}">
-                      <div class="snapshot-box">
-                        <strong>Deleted product snapshot:</strong><br>
-                        <table class="diff-table" style="margin-top:6px">
-                          {% for k, v in h.old_data.items() %}
-                          <tr>
-                            <td class="diff-field">{{ k }}</td>
-                            <td>{{ v if v is not none else '—' }}</td>
-                          </tr>
-                          {% endfor %}
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                {% endif %}
-
-                {# Edited product: show field diff toggle #}
-                {% if h.event_type == 'product_edited' and h.old_data and h.new_data %}
-                  {% set changed_fields = [] %}
-                  {% for k in h.old_data.keys() %}
-                    {% if h.old_data[k]|string != h.new_data.get(k, '')|string %}
-                      {% set _ = changed_fields.append(k) %}
-                    {% endif %}
-                  {% endfor %}
-                  {% if changed_fields %}
-                  <div style="margin-top:4px">
-                    <button class="detail-toggle" onclick="toggleDetail({{ h.id }})">
-                      📋 {{ changed_fields|length }} field{{ 's' if changed_fields|length != 1 else '' }} changed
-                    </button>
-                    <div class="detail-panel" id="detail-{{ h.id }}">
-                      <table class="diff-table" style="margin-top:6px">
-                        <tr><th class="diff-field">Field</th><th class="diff-old">Before</th><th class="diff-new">After</th></tr>
-                        {% for k in changed_fields %}
-                        <tr>
-                          <td class="diff-field">{{ k }}</td>
-                          <td class="diff-old">{{ h.old_data[k] if h.old_data[k] is not none else '—' }}</td>
-                          <td class="diff-new">{{ h.new_data.get(k, '—') }}</td>
-                        </tr>
-                        {% endfor %}
-                      </table>
-                    </div>
-                  </div>
-                  {% endif %}
-                {% endif %}
-              </td>
-              <td style="color:#666;font-size:0.85rem">{{ h.changed_by or '—' }}</td>
-              <td style="color:#888;font-size:0.82rem">{{ h.notes or '—' }}</td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-        </div>
-      {% else %}
-        <div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
-          <div class="no-results-icon">📜</div>
-          <p>No events recorded yet.</p>
-          <p style="margin-top:8px;font-size:0.9rem;color:#aaa">
-            All admin actions are logged automatically.
-          </p>
-        </div>
-      {% endif %}
-    </div>
+<form method="GET" class="filter-bar">
+  <div><label>Event Type</label>
+    <select name="event_type">
+      <option value="">All Events</option>
+      {% for et in event_types %}
+        <option value="{{ et }}" {% if et == event_filter %}selected{% endif %}>{{ et.replace('_',' ').title() }}</option>
+      {% endfor %}
+    </select>
   </div>
-</div>
+  <div><label>Product Name</label>
+    <input type="text" name="product" value="{{ product_filter }}" placeholder="Search product…">
+  </div>
+  <div><label>User</label>
+    <input type="text" name="user" value="{{ user_filter }}" placeholder="Username…" style="width:110px">
+  </div>
+  <div><label>From</label><input type="date" name="date_from" value="{{ date_from }}"></div>
+  <div><label>To</label><input type="date" name="date_to" value="{{ date_to }}"></div>
+  <div style="display:flex;gap:8px;align-items:flex-end">
+    <button type="submit" class="btn btn-primary btn-sm">Filter</button>
+    <a href="{{ url_for('admin.history') }}" class="btn btn-secondary btn-sm">Clear</a>
+  </div>
+</form>
 
+{% if history %}
+  <p style="color:#888;font-size:.85rem;margin-bottom:12px">
+    Showing <strong>{{ history|length }}</strong> of <strong>{{ total }}</strong>
+    event{{ 's' if total != 1 else '' }}, most recent first
+    (page {{ page }} of {{ total_pages }}).
+  </p>
+  <div class="table-wrap">
+  <table class="history-table" style="table-layout:auto">
+    <thead>
+      <tr>
+        <th style="width:150px">Date &amp; Time</th>
+        <th style="width:130px">Event</th>
+        <th>Product / Subject</th>
+        <th style="width:110px">User</th>
+        <th>Notes</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history %}
+      <tr class="history-row">
+        <td style="white-space:nowrap;color:#888;font-size:.82rem">{{ h.changed_at }}</td>
+        <td>
+          <span class="event-badge ev-{{ h.event_type }}">
+            {% if   h.event_type == 'product_added'    %}➕ Added
+            {% elif h.event_type == 'product_edited'   %}✏ Edited
+            {% elif h.event_type == 'product_deleted'  %}🗑 Deleted
+            {% elif h.event_type == 'product_restored' %}♻ Restored
+            {% elif h.event_type == 'price_changed'    %}💰 Price
+            {% elif h.event_type == 'category_added'   %}📁 Cat+
+            {% elif h.event_type == 'category_deleted' %}📁 Cat−
+            {% elif h.event_type == 'unit_added'       %}📐 Unit+
+            {% elif h.event_type == 'unit_deleted'     %}📐 Unit−
+            {% elif h.event_type == 'settings_changed' %}⚙ Settings
+            {% elif h.event_type == 'admin_login'      %}🔑 Login
+            {% elif h.event_type == 'admin_logout'     %}🚪 Logout
+            {% elif h.event_type == 'user_added'       %}👤+ User
+            {% elif h.event_type == 'user_edited'      %}👤 User
+            {% elif h.event_type == 'user_deleted'     %}👤− User
+            {% elif h.event_type == 'supplier_added'   %}🏭+ Supplier
+            {% elif h.event_type == 'supplier_edited'  %}🏭 Supplier
+            {% elif h.event_type == 'supplier_deleted' %}🏭− Supplier
+            {% else %}{{ h.event_type }}{% endif %}
+          </span>
+        </td>
+        <td>
+          {% if h.product_name %}<strong>{{ h.product_name }}</strong>
+          {% else %}<span style="color:#aaa">—</span>{% endif %}
+          {% if h.event_type == 'price_changed' and h.old_data and h.new_data %}
+            <div style="margin-top:4px;font-size:.82rem">
+              <span style="color:#c62828">£{{ "%.2f"|format(h.old_data.cost_price) }}</span>
+              → <span style="color:#2e7d32;font-weight:700">£{{ "%.2f"|format(h.new_data.cost_price) }}</span>
+              {% set diff = h.new_data.cost_price - h.old_data.cost_price %}
+              {% if diff > 0 %}<span class="price-up" style="font-size:.78rem">(+£{{ "%.2f"|format(diff) }})</span>
+              {% elif diff < 0 %}<span class="price-down" style="font-size:.78rem">(−£{{ "%.2f"|format(diff|abs) }})</span>{% endif %}
+            </div>
+          {% endif %}
+          {% if h.event_type == 'product_deleted' and h.old_data %}
+            <div style="margin-top:4px">
+              <button class="detail-toggle" onclick="toggleDetail({{ h.id }})">📋 View snapshot</button>
+              <div class="detail-panel" id="detail-{{ h.id }}">
+                <div class="snapshot-box"><strong>Deleted snapshot:</strong><br>
+                  <table class="diff-table" style="margin-top:6px">
+                    {% for k, v in h.old_data.items() %}
+                    <tr><td class="diff-field">{{ k }}</td><td>{{ v if v is not none else '—' }}</td></tr>
+                    {% endfor %}
+                  </table>
+                </div>
+              </div>
+            </div>
+          {% endif %}
+          {% if h.event_type == 'product_edited' and h.old_data and h.new_data %}
+            {% set changed_fields = [] %}
+            {% for k in h.old_data.keys() %}
+              {% if h.old_data[k]|string != h.new_data.get(k,'')|string %}{% set _ = changed_fields.append(k) %}{% endif %}
+            {% endfor %}
+            {% if changed_fields %}
+            <div style="margin-top:4px">
+              <button class="detail-toggle" onclick="toggleDetail({{ h.id }})">
+                📋 {{ changed_fields|length }} field{{ 's' if changed_fields|length != 1 else '' }} changed
+              </button>
+              <div class="detail-panel" id="detail-{{ h.id }}">
+                <table class="diff-table" style="margin-top:6px">
+                  <tr><th class="diff-field">Field</th><th class="diff-old">Before</th><th class="diff-new">After</th></tr>
+                  {% for k in changed_fields %}
+                  <tr>
+                    <td class="diff-field">{{ k }}</td>
+                    <td class="diff-old">{{ h.old_data[k] if h.old_data[k] is not none else '—' }}</td>
+                    <td class="diff-new">{{ h.new_data.get(k,'—') }}</td>
+                  </tr>
+                  {% endfor %}
+                </table>
+              </div>
+            </div>
+            {% endif %}
+          {% endif %}
+        </td>
+        <td style="color:#666;font-size:.85rem">{{ h.changed_by or '—' }}</td>
+        <td style="color:#888;font-size:.82rem">{{ h.notes or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  {% if total_pages > 1 %}
+  {% macro paged_url(p) %}{{ url_for('admin.history', event_type=event_filter, product=product_filter, user=user_filter, date_from=date_from, date_to=date_to, page=p) }}{% endmacro %}
+  <div class="pagination">
+    {% if page > 1 %}<a href="{{ paged_url(page-1) }}">← Prev</a>
+    {% else %}<span class="disabled">← Prev</span>{% endif %}
+    {% for p in range(1, total_pages+1) %}
+      {% if p == page %}<span class="current">{{ p }}</span>
+      {% elif p <= 3 or p > total_pages-3 or (p >= page-2 and p <= page+2) %}<a href="{{ paged_url(p) }}">{{ p }}</a>
+      {% elif p == 4 or p == total_pages-3 %}<span style="border:none;color:#aaa">…</span>{% endif %}
+    {% endfor %}
+    {% if page < total_pages %}<a href="{{ paged_url(page+1) }}">Next →</a>
+    {% else %}<span class="disabled">Next →</span>{% endif %}
+  </div>
+  {% endif %}
+
+{% else %}
+  <div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
+    <div class="no-results-icon">📜</div>
+    <p>No events recorded yet.</p>
+    <p style="margin-top:8px;font-size:.9rem;color:#aaa">All admin actions are logged automatically.</p>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
 <script>
-function toggleDetail(id) {
-  const panel = document.getElementById('detail-' + id);
-  panel.classList.toggle('open');
-}
+function toggleDetail(id){ document.getElementById('detail-'+id).classList.toggle('open'); }
 </script>
-</body>
-</html>
+{% endblock %}

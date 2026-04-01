@@ -1,2 +1,6 @@
-flask>=3.0.0
-gunicorn>=21.0.0
+flask>=3.0.0,<4
+gunicorn>=21.0.0,<23
+bcrypt>=4.0.0,<5
+flask-wtf>=1.2.0,<2
+flask-limiter>=3.5.0,<4
+python-dotenv>=1.0.0,<2

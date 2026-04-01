@@ -1,301 +1,149 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Settings — {{ shop_name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    .tag-list { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
-    .tag {
-      display: inline-flex; align-items: center; gap: 6px;
-      padding: 5px 12px; background: var(--green-pale);
-      border: 1px solid var(--green-border); border-radius: 20px;
-      font-size: 0.88rem; color: var(--green-dark);
-    }
-    .tag-del {
-      cursor: pointer; color: var(--red); font-weight: 700;
-      background: none; border: none; font-size: 1rem; line-height: 1;
-      padding: 0; margin: 0;
-    }
-    .tag-del:hover { color: darkred; }
-    .add-tag-row { display: flex; gap: 8px; align-items: center; }
-    .add-tag-input {
-      padding: 8px 12px; border: 1px solid var(--grey-mid);
-      border-radius: 6px; font-size: 0.9rem; outline: none; width: 200px;
-    }
-    .add-tag-input:focus { border-color: var(--green-light); }
-    .tag-error { color: var(--red); font-size: 0.82rem; margin-top: 4px; }
-  </style>
-</head>
-<body>
-<div class="admin-layout">
+{% extends "base_admin.html" %}
+{% block title %}Settings{% endblock %}
+{% block page_title %}Settings{% endblock %}
 
-  <aside class="admin-sidebar">
-    <div class="sidebar-brand">
-      <h2>🌿 {{ shop_name }}</h2>
-      <div class="brand-sub">Admin</div>
-    </div>
-    <nav class="sidebar-nav">
-      <a href="{{ url_for('admin_products') }}">
-        <span class="nav-icon">📋</span> Products
-      </a>
-      <a href="{{ url_for('admin_history') }}">
-        <span class="nav-icon">📜</span> Audit History
-      </a>
-      <a href="{{ url_for('admin_deleted_products') }}">
-        <span class="nav-icon">🗑</span> Deleted Products
-      </a>
-      <a href="{{ url_for('admin_settings') }}" class="active">
-        <span class="nav-icon">⚙</span> Settings
-      </a>
-      <a href="{{ url_for('index') }}" target="_blank">
-        <span class="nav-icon">🔍</span> Price Lookup
-      </a>
-    </nav>
-    <div class="sidebar-footer">
-      <a href="{{ url_for('admin_logout') }}">🚪 Log out</a>
-    </div>
-  </aside>
+{% block head %}
+<style>
+  .tag-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+  .tag{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;background:var(--green-pale);border:1px solid var(--green-border);border-radius:20px;font-size:.88rem;color:var(--green-dark)}
+  .tag-del{cursor:pointer;color:var(--red);font-weight:700;background:none;border:none;font-size:1rem;line-height:1;padding:0;margin:0}
+  .tag-del:hover{color:darkred}
+  .add-tag-row{display:flex;gap:8px;align-items:center}
+  .add-tag-input{padding:8px 12px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.9rem;outline:none;width:200px}
+  .add-tag-input:focus{border-color:var(--green-light)}
+  .tag-error{color:var(--red);font-size:.82rem;margin-top:4px}
+</style>
+{% endblock %}
 
-  <div class="admin-main">
-    <div class="admin-topbar">
-      <h1>Settings</h1>
-    </div>
+{% block content %}
+{% set active_nav = 'settings' %}
 
-    <div class="admin-content">
+<div class="settings-grid">
 
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="flash-messages">
-            {% for category, message in messages %}
-              <div class="flash {{ category }}">{{ message }}</div>
-            {% endfor %}
-          </div>
-        {% endif %}
-      {% endwith %}
-
-      <div class="settings-grid">
-
-        <!-- ── General settings ── -->
-      <div class="settings-card">
-        <h3>General</h3>
-        <form method="POST"><button type="button" style="float:right;background:none;border:none;cursor:pointer;color:var(--blue);font-size:0.85rem;text-decoration:underline" onclick="location.reload()">
-          <input type="hidden" name="action" value="save_settings">
-          <div class="form-group" style="margin-bottom:16px">
-            <label for="shop_name">Shop Name</label>
-            <input type="text" id="shop_name" name="shop_name"
-                   value="{{ settings.shop_name }}" required>
-          </div>
-          <h3>Pricing</h3>
-          <div class="form-group" style="margin-bottom:24px">
-            <label for="default_markup">Default Markup %</label>
-            <input type="number" id="default_markup" name="default_markup"
-                   value="{{ settings.default_markup }}"
-                   step="1" min="0" max="999" required>
-            <span class="hint">
-              Used for products without their own markup.
-              e.g. 30 = cost × 1.30 = sell price.
-            </span>
-          </div>
-          <button type="submit" class="btn btn-primary">💾 Save</button>
-        </form>
+  <div class="settings-card">
+    <h3>General &amp; Pricing</h3>
+    <form method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="save_settings">
+      <div class="form-group" style="margin-bottom:14px">
+        <label for="shop_name">Shop Name</label>
+        <input type="text" id="shop_name" name="shop_name" maxlength="80" value="{{ settings.get('shop_name','') }}" required>
       </div>
-
-      <!-- ── Categories ── -->
-      <div class="settings-card">
-        <h3>Product Categories</h3>
-        <div class="tag-list" id="cat-list">
-          {% for cat in categories %}
-          <span class="tag" data-name="{{ cat }}">
-            {{ cat }}
-            <button class="tag-del" onclick="deleteCategory(this)" title="Remove">×</button>
-          </span>
+      <div class="form-group" style="margin-bottom:14px">
+        <label for="currency">Currency Symbol</label>
+        <input type="text" id="currency" name="currency" maxlength="5" value="{{ settings.get('currency','£') }}" style="width:60px">
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label for="default_markup">Default Markup %</label>
+        <input type="number" id="default_markup" name="default_markup"
+               value="{{ settings.get('default_markup','30') }}" step="0.1" min="0" max="9999" required style="width:100px">
+        <span class="hint">Used for products without their own markup. e.g. 30 = cost × 1.30</span>
+      </div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label for="price_rounding">Price Rounding</label>
+        <select id="price_rounding" name="price_rounding">
+          {% for val, lbl in [('none','No rounding'),('0.05','Nearest 5p'),('0.10','Nearest 10p'),('0.99','Charm (£X.99)')] %}
+            <option value="{{ val }}" {% if settings.get('price_rounding','none') == val %}selected{% endif %}>{{ lbl }}</option>
           {% endfor %}
-        </div>
-        <div class="add-tag-row">
-          <input type="text" class="add-tag-input" id="new-cat-input"
-                 placeholder="New category name"
-                 onkeydown="if(event.key==='Enter'){addCategory();event.preventDefault();}">
-          <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Add</button>
-        </div>
-        <div class="tag-error" id="cat-error"></div>
+        </select>
+        <span class="hint">Applied to all sell prices after markup calculation</span>
       </div>
-
-      <!-- ── Units ── -->
-      <div class="settings-card">
-        <h3>Units of Sale</h3>
-        <div class="tag-list" id="unit-list">
-          {% for unit in units %}
-          <span class="tag" data-name="{{ unit }}">
-            {{ unit }}
-            <button class="tag-del" onclick="deleteUnit(this)" title="Remove">×</button>
-          </span>
-          {% endfor %}
-        </div>
-        <div class="add-tag-row">
-          <input type="text" class="add-tag-input" id="new-unit-input"
-                 placeholder="New unit (e.g. pallet)"
-                 onkeydown="if(event.key==='Enter'){addUnit();event.preventDefault();}">
-          <button class="btn btn-primary btn-sm" onclick="addUnit()">+ Add</button>
-        </div>
-        <div class="tag-error" id="unit-error"></div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label for="review_days">Price Review Period (days)</label>
+        <input type="number" id="review_days" name="review_days"
+               value="{{ settings.get('review_days','30') }}" step="1" min="1" max="999" required style="width:80px">
+        <span class="hint">Products not updated in this many days appear in Price Review report</span>
       </div>
-
-      <!-- ── Info ── -->
-      <div style="padding:16px;background:var(--blue-pale);border-radius:8px;border:1px solid #90caf9">
-        <strong style="color:var(--blue)">Data file</strong>
-        <p style="margin-top:8px;font-size:0.88rem;color:#555">
-          All data is stored in <code>prices.db</code> in the app folder.
-          Back this file up regularly.
-        </p>
-        <p style="margin-top:6px;font-size:0.88rem;color:#555">
-          App URL: <a href="http://localhost:5000" target="_blank">http://localhost:5000</a>
-        </p>
-      </div>
-
-      <!-- ── Change Password ── -->
-      <div class="settings-card">
-        <h3>🔐 Change Admin Password</h3>
-        <form method="POST">
-          <input type="hidden" name="action" value="change_password">
-          <div class="form-group" style="margin-bottom:12px">
-            <label for="current_password">Current Password</label>
-            <input type="password" id="current_password" name="current_password"
-                   placeholder="Enter current password" required autocomplete="current-password">
-          </div>
-          <div class="form-group" style="margin-bottom:12px">
-            <label for="new_password">New Password</label>
-            <input type="password" id="new_password" name="new_password"
-                   placeholder="At least 4 characters" required autocomplete="new-password">
-          </div>
-          <div class="form-group" style="margin-bottom:20px">
-            <label for="confirm_password">Confirm New Password</label>
-            <input type="password" id="confirm_password" name="confirm_password"
-                   placeholder="Repeat new password" required autocomplete="new-password">
-          </div>
-          <button type="submit" class="btn btn-primary">🔐 Change Password</button>
-        </form>
-      </div>
-
-      </div> <!-- /.settings-grid -->
-
-    </div>
+      <button type="submit" class="btn btn-primary">💾 Save Settings</button>
+    </form>
   </div>
+
+  <div class="settings-card">
+    <h3>Product Categories</h3>
+    <div class="tag-list" id="cat-list">
+      {% for cat in categories %}
+      <span class="tag" data-name="{{ cat }}">
+        {{ cat }}
+        <button class="tag-del" onclick="deleteCategory(this)" title="Remove">×</button>
+      </span>
+      {% endfor %}
+    </div>
+    <div class="add-tag-row">
+      <input type="text" class="add-tag-input" id="new-cat-input" placeholder="New category name" maxlength="60"
+             onkeydown="if(event.key==='Enter'){addCategory();event.preventDefault();}">
+      <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Add</button>
+    </div>
+    <div class="tag-error" id="cat-error"></div>
+  </div>
+
+  <div class="settings-card">
+    <h3>Units of Sale</h3>
+    <div class="tag-list" id="unit-list">
+      {% for unit in units %}
+      <span class="tag" data-name="{{ unit }}">
+        {{ unit }}
+        <button class="tag-del" onclick="deleteUnit(this)" title="Remove">×</button>
+      </span>
+      {% endfor %}
+    </div>
+    <div class="add-tag-row">
+      <input type="text" class="add-tag-input" id="new-unit-input" placeholder="New unit (e.g. pallet)" maxlength="40"
+             onkeydown="if(event.key==='Enter'){addUnit();event.preventDefault();}">
+      <button class="btn btn-primary btn-sm" onclick="addUnit()">+ Add</button>
+    </div>
+    <div class="tag-error" id="unit-error"></div>
+  </div>
+
+  <div style="padding:16px;background:var(--blue-pale);border-radius:8px;border:1px solid #90caf9">
+    <strong style="color:var(--blue)">Data &amp; Backup</strong>
+    <p style="margin-top:8px;font-size:.88rem;color:#555">All data is stored in <code>prices.db</code> in the app folder. Back this file up regularly.</p>
+    <p style="margin-top:8px;font-size:.88rem;color:#555">
+      <a href="{{ url_for('admin.export_csv') }}" class="btn btn-secondary btn-sm">⬇ Export CSV</a>
+      <a href="{{ url_for('admin.export_json') }}" class="btn btn-secondary btn-sm" style="margin-left:6px">⬇ Export JSON</a>
+    </p>
+    <p style="margin-top:8px;font-size:.8rem;color:#aaa">Manage users in <a href="{{ url_for('admin.users') }}">Admin → Users</a></p>
+  </div>
+
 </div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-// ── Categories ────────────────────────────────────────────────────────────────
-function addCategory() {
-  const input = document.getElementById('new-cat-input');
-  const name  = input.value.trim();
-  const errEl = document.getElementById('cat-error');
-  if (!name) return;
-  errEl.textContent = '';
+const CSRF = {{ csrf_token()|tojson }};
+const headers = {'Content-Type':'application/json','X-CSRFToken':CSRF};
 
-  fetch('/api/categories/add', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      const list = document.getElementById('cat-list');
-      const tag  = document.createElement('span');
-      tag.className = 'tag';
-      tag.dataset.name = name;
-      const label = document.createTextNode(name + ' ');
-      const btn   = document.createElement('button');
-      btn.className = 'tag-del';
-      btn.title = 'Remove';
-      btn.textContent = '×';
-      btn.addEventListener('click', () => deleteCategory(btn));
-      tag.appendChild(label);
-      tag.appendChild(btn);
-      list.appendChild(tag);
-      input.value = '';
-    } else {
-      errEl.textContent = data.error || 'Could not add category';
-    }
+function addTagTo(listId, name, deleteFn) {
+  const list=document.getElementById(listId), tag=document.createElement('span');
+  tag.className='tag'; tag.dataset.name=name;
+  tag.appendChild(document.createTextNode(name+' '));
+  const btn=document.createElement('button'); btn.className='tag-del'; btn.title='Remove'; btn.textContent='×';
+  btn.addEventListener('click',()=>deleteFn(btn)); tag.appendChild(btn); list.appendChild(tag);
+}
+function addCategory(){
+  const input=document.getElementById('new-cat-input'), name=input.value.trim(), errEl=document.getElementById('cat-error');
+  if(!name) return; errEl.textContent='';
+  fetch('/api/categories/add',{method:'POST',headers,body:JSON.stringify({name})}).then(r=>r.json()).then(data=>{
+    if(data.ok){addTagTo('cat-list',name,deleteCategory);input.value='';}else errEl.textContent=data.error||'Could not add';
   });
 }
-
-function deleteCategory(btn) {
-  const tag  = btn.closest('.tag');
-  const name = tag ? tag.dataset.name : '';
-  if (!name) return;
-  if (!confirm('Remove category "' + name + '"?\n(Only possible if no products use it)')) return;
-  fetch('/api/categories/delete', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      tag.remove();
-    } else {
-      alert(data.error || 'Could not delete');
-    }
+function deleteCategory(btn){
+  const tag=btn.closest('.tag'), name=tag?.dataset.name;
+  if(!name||!confirm(`Remove category "${name}"?`)) return;
+  fetch('/api/categories/delete',{method:'POST',headers,body:JSON.stringify({name})}).then(r=>r.json())
+    .then(data=>{if(data.ok)tag.remove();else alert(data.error);});
+}
+function addUnit(){
+  const input=document.getElementById('new-unit-input'), name=input.value.trim(), errEl=document.getElementById('unit-error');
+  if(!name) return; errEl.textContent='';
+  fetch('/api/units/add',{method:'POST',headers,body:JSON.stringify({name})}).then(r=>r.json()).then(data=>{
+    if(data.ok){addTagTo('unit-list',name,deleteUnit);input.value='';}else errEl.textContent=data.error||'Could not add';
   });
 }
-
-// ── Units ─────────────────────────────────────────────────────────────────────
-function addUnit() {
-  const input = document.getElementById('new-unit-input');
-  const name  = input.value.trim();
-  const errEl = document.getElementById('unit-error');
-  if (!name) return;
-  errEl.textContent = '';
-
-  fetch('/api/units/add', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      const list = document.getElementById('unit-list');
-      const tag  = document.createElement('span');
-      tag.className = 'tag';
-      tag.dataset.name = name;
-      const label = document.createTextNode(name + ' ');
-      const btn   = document.createElement('button');
-      btn.className = 'tag-del';
-      btn.title = 'Remove';
-      btn.textContent = '×';
-      btn.addEventListener('click', () => deleteUnit(btn));
-      tag.appendChild(label);
-      tag.appendChild(btn);
-      list.appendChild(tag);
-      input.value = '';
-    } else {
-      errEl.textContent = data.error || 'Could not add unit';
-    }
-  });
-}
-
-function deleteUnit(btn) {
-  const tag  = btn.closest('.tag');
-  const name = tag ? tag.dataset.name : '';
-  if (!name) return;
-  if (!confirm('Remove unit "' + name + '"?\n(Only possible if no products use it)')) return;
-  fetch('/api/units/delete', {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({name})
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.ok) {
-      tag.remove();
-    } else {
-      alert(data.error || 'Could not delete');
-    }
-  });
+function deleteUnit(btn){
+  const tag=btn.closest('.tag'), name=tag?.dataset.name;
+  if(!name||!confirm(`Remove unit "${name}"?`)) return;
+  fetch('/api/units/delete',{method:'POST',headers,body:JSON.stringify({name})}).then(r=>r.json())
+    .then(data=>{if(data.ok)tag.remove();else alert(data.error);});
 }
 </script>
-</body>
-</html>
+{% endblock %}

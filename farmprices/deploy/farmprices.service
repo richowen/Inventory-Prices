@@ -8,19 +8,19 @@ Type=exec
 # NOTE: Change 'richowen' below to your actual Pi username if different
 User=richowen
 Group=richowen
-WorkingDirectory=/home/richowen/farmprices
-Environment="PATH=/home/richowen/farmprices/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+WorkingDirectory=/home/richowen/Inventory-Prices/farmprices
+Environment="PATH=/home/richowen/Inventory-Prices/farmprices/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 # Initialise the database before starting
-ExecStartPre=/home/richowen/farmprices/venv/bin/python -c "import sys; sys.path.insert(0, '/home/richowen/farmprices'); import app; app.init_db()"
+ExecStartPre=/home/richowen/Inventory-Prices/farmprices/venv/bin/python -c "import sys; sys.path.insert(0, '/home/richowen/Inventory-Prices/farmprices'); import app; app.init_db()"
 
 # Start Gunicorn with 4 workers
-ExecStart=/home/richowen/farmprices/venv/bin/gunicorn \
+ExecStart=/home/richowen/Inventory-Prices/farmprices/venv/bin/gunicorn \
     --workers 4 \
     --bind 0.0.0.0:5000 \
     --timeout 120 \
-    --access-logfile /home/richowen/farmprices/app.log \
-    --error-logfile /home/richowen/farmprices/app.log \
+    --access-logfile /home/richowen/Inventory-Prices/farmprices/app.log \
+    --error-logfile /home/richowen/Inventory-Prices/farmprices/app.log \
     --log-level info \
     app:app
 

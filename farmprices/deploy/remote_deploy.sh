@@ -1,7 +1,8 @@
 #!/bin/bash
 set -Eeuo pipefail
 
-APP_DIR="${APP_DIR:-/home/richowen/farmprices}"
+REPO_DIR="${REPO_DIR:-/home/richowen/Inventory-Prices}"
+APP_DIR="${APP_DIR:-$REPO_DIR/farmprices}"
 BRANCH="${BRANCH:-main}"
 SERVICE_NAME="${SERVICE_NAME:-farmprices}"
 BACKUP_DIR="$APP_DIR/backups"
@@ -19,18 +20,43 @@ require_cmd() {
     }
 }
 
-log "Starting remote deploy for $APP_DIR (branch: $BRANCH, service: $SERVICE_NAME)"
+ensure_git() {
+    if command -v git >/dev/null 2>&1; then
+        return 0
+    fi
+
+    log "git not found. Attempting automatic install via apt-get..."
+    require_cmd sudo
+    require_cmd apt-get
+
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update -y
+    sudo DEBIAN_FRONTEND=noninteractive apt-get install -y git
+
+    if ! command -v git >/dev/null 2>&1; then
+        log "ERROR: git installation attempted but git is still unavailable in PATH"
+        exit 1
+    fi
+
+    log "git installed successfully"
+}
+
+log "Starting remote deploy for repo=$REPO_DIR app=$APP_DIR (branch: $BRANCH, service: $SERVICE_NAME)"
 
 require_cmd python3
 require_cmd sudo
-require_cmd git
+ensure_git
+
+if [ ! -d "$REPO_DIR" ]; then
+    log "ERROR: Repo directory not found: $REPO_DIR"
+    exit 1
+fi
 
 if [ ! -d "$APP_DIR" ]; then
     log "ERROR: App directory not found: $APP_DIR"
     exit 1
 fi
 
-cd "$APP_DIR"
+cd "$REPO_DIR"
 
 mkdir -p "$BACKUP_DIR"
 
@@ -40,7 +66,7 @@ if [ -d ".git" ]; then
     CURRENT_COMMIT="$(git rev-parse --short HEAD)"
     log "Current commit: $CURRENT_COMMIT"
 else
-    log "ERROR: No git repository detected at $APP_DIR (.git missing)"
+    log "ERROR: No git repository detected at $REPO_DIR (.git missing)"
     log "Clone the repo first, then re-run deploy."
     exit 1
 fi
@@ -60,6 +86,8 @@ log "Target commit: $TARGET_COMMIT"
 
 log "Checking out latest origin/$BRANCH"
 git reset --hard "origin/$BRANCH"
+
+cd "$APP_DIR"
 
 if [ ! -d "$APP_DIR/venv" ]; then
     log "Virtual environment not found. Creating venv..."

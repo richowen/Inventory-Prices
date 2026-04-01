@@ -110,7 +110,7 @@ scp -r "C:\path\to\farmprices" richowen@farmprices.local:/home/richowen/
 ### Step 7: Create a Python virtual environment
 
 ```bash
-cd /home/richowen/farmprices
+cd /home/richowen/Inventory-Prices/farmprices
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -119,7 +119,7 @@ pip install -r requirements.txt
 ### Step 8: Test the app runs
 
 ```bash
-cd /home/richowen/farmprices
+cd /home/richowen/Inventory-Prices/farmprices
 source venv/bin/activate
 python app.py
 ```
@@ -145,14 +145,16 @@ Press **Ctrl+C** to stop the test.
 
 This makes the app start automatically when the Pi boots, and restart if it crashes.
 
-### Step 9: Install the systemd service
+### Step 9: Install or update the systemd service
 
 ```bash
-sudo cp /home/richowen/farmprices/deploy/farmprices.service /etc/systemd/system/
+sudo cp /home/richowen/Inventory-Prices/farmprices/deploy/farmprices.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo systemctl enable farmprices
-sudo systemctl start farmprices
+sudo systemctl restart farmprices
 ```
+
+If you previously used the old path layout (`/home/richowen/farmprices`), this copy step replaces it with the new [`farmprices.service`](farmprices/deploy/farmprices.service) definition.
 
 ### Step 10: Check it's running
 
@@ -178,7 +180,7 @@ sudo journalctl -u farmprices -f    # View live logs
 ### Step 11: Make the backup script executable
 
 ```bash
-chmod +x /home/richowen/farmprices/deploy/backup.sh
+chmod +x /home/richowen/Inventory-Prices/farmprices/deploy/backup.sh
 ```
 
 ### Step 12: Add a daily cron job
@@ -190,10 +192,10 @@ crontab -e
 Select nano (option 1) if asked. Add this line at the bottom:
 
 ```
-0 2 * * * /home/richowen/farmprices/deploy/backup.sh
+0 2 * * * /home/richowen/Inventory-Prices/farmprices/deploy/backup.sh
 ```
 
-This runs a backup every day at 2am. Backups are stored in `/home/richowen/farmprices/backups/` and kept for 30 days.
+This runs a backup every day at 2am. Backups are stored in `/home/richowen/Inventory-Prices/farmprices/backups/` and kept for 30 days.
 
 ---
 
@@ -279,8 +281,8 @@ On the Pi, ensure the app is a git clone and can pull from GitHub:
 
 ```bash
 cd /home/richowen
-git clone <your-repo-url> farmprices
-cd /home/richowen/farmprices
+git clone https://github.com/richowen/Inventory-Prices.git
+cd /home/richowen/Inventory-Prices/farmprices
 git remote -v
 git checkout main
 git pull origin main
@@ -289,7 +291,7 @@ git pull origin main
 Then ensure deploy script is executable:
 
 ```bash
-chmod +x /home/richowen/farmprices/deploy/remote_deploy.sh
+chmod +x /home/richowen/Inventory-Prices/farmprices/deploy/remote_deploy.sh
 ```
 
 If the repo is private, configure SSH deploy key/auth on the Pi so `git fetch` works non-interactively.
@@ -317,22 +319,13 @@ powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1
 ```
 
 What it does:
-1. Verifies you are on branch `main`
-2. Verifies working tree is clean
-3. Pushes to `origin/main`
-4. SSHes over Tailscale to the Pi
-5. Runs [`remote_deploy.sh`](farmprices/deploy/remote_deploy.sh), which pulls latest `origin/main`, installs deps, runs checks, and restarts service
+1. SSHes over Tailscale to the Pi
+2. Runs [`remote_deploy.sh`](farmprices/deploy/remote_deploy.sh), which pulls latest `origin/main`, installs deps, runs checks, and restarts service
 
 Optional flags:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1 -PiHost "farmprices.west-stonecat.ts.net" -PiUser "richowen"
-```
-
-Skip push only if you already pushed:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1 -SkipPush
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1 -PiHost "farmprices.west-stonecat.ts.net" -PiUser "richowen" -RepoDir "/home/richowen/Inventory-Prices" -AppDir "/home/richowen/Inventory-Prices/farmprices"
 ```
 
 The script will:
@@ -362,7 +355,7 @@ http://farmprices.local
 Run this after deployment and before client handover:
 
 ```bash
-cd /home/richowen/farmprices
+cd /home/richowen/Inventory-Prices/farmprices
 source venv/bin/activate
 python reset_db.py
 ```
@@ -373,7 +366,7 @@ Then restart the service and verify the database is clean:
 
 ```bash
 sudo systemctl restart farmprices
-sqlite3 /home/richowen/farmprices/prices.db "SELECT 'products', COUNT(*) FROM products UNION ALL SELECT 'price_history', COUNT(*) FROM price_history UNION ALL SELECT 'audit_log', COUNT(*) FROM audit_log;"
+sqlite3 /home/richowen/Inventory-Prices/farmprices/prices.db "SELECT 'products', COUNT(*) FROM products UNION ALL SELECT 'price_history', COUNT(*) FROM price_history UNION ALL SELECT 'audit_log', COUNT(*) FROM audit_log;"
 ```
 
 Expected result:
@@ -394,17 +387,17 @@ If deployment fails:
 
 ```bash
 ssh richowen@farmprices-pi.tailnet-name.ts.net
-cd /home/richowen/farmprices
+cd /home/richowen/Inventory-Prices
 git log --oneline -n 5
 git reset --hard <previous-good-commit>
 sudo systemctl restart farmprices
 ```
 
-If needed, restore a DB backup (stored in `/home/richowen/farmprices/backups/`):
+If needed, restore a DB backup (stored in `/home/richowen/Inventory-Prices/farmprices/backups/`):
 
 ```bash
 sudo systemctl stop farmprices
-cp /home/richowen/farmprices/backups/prices_deploy_YYYY-MM-DD_HHMMSS.db /home/richowen/farmprices/prices.db
+cp /home/richowen/Inventory-Prices/farmprices/backups/prices_deploy_YYYY-MM-DD_HHMMSS.db /home/richowen/Inventory-Prices/farmprices/prices.db
 sudo systemctl start farmprices
 ```
 
@@ -425,20 +418,20 @@ sudo systemctl restart farmprices
 ```bash
 sudo journalctl -u farmprices -n 50    # Last 50 log lines
 sudo journalctl -u farmprices -f       # Live log stream
-cat /home/richowen/farmprices/app.log        # Gunicorn access log
+cat /home/richowen/Inventory-Prices/farmprices/app.log        # Gunicorn access log
 ```
 
 ### Manual database backup
 
 ```bash
-/home/richowen/farmprices/deploy/backup.sh
+/home/richowen/Inventory-Prices/farmprices/deploy/backup.sh
 ```
 
 ### Restoring a backup
 
 ```bash
 sudo systemctl stop farmprices
-cp /home/richowen/farmprices/backups/prices_YYYY-MM-DD_HHMM.db /home/richowen/farmprices/prices.db
+cp /home/richowen/Inventory-Prices/farmprices/backups/prices_YYYY-MM-DD_HHMM.db /home/richowen/Inventory-Prices/farmprices/prices.db
 sudo systemctl start farmprices
 ```
 
@@ -452,7 +445,7 @@ sudo systemctl start farmprices
 | App not loading | SSH into Pi and run `sudo systemctl status farmprices` to check for errors |
 | Slow response | Normal on first load. If consistently slow, check `sudo journalctl -u farmprices -n 20` |
 | Pi won't boot | Check power supply — must be official Pi power supply, not a phone charger |
-| Forgot admin password | SSH into Pi and run: `python3 -c "import sqlite3,hashlib; db=sqlite3.connect('/home/richowen/farmprices/prices.db'); db.execute('UPDATE settings SET value=? WHERE key=?',(hashlib.sha256(b'farm2024').hexdigest(),'admin_password')); db.commit()"` |
+| Forgot admin password | SSH into Pi and run: `python3 -c "import sqlite3,hashlib; db=sqlite3.connect('/home/richowen/Inventory-Prices/farmprices/prices.db'); db.execute('UPDATE settings SET value=? WHERE key=?',(hashlib.sha256(b'farm2024').hexdigest(),'admin_password')); db.commit()"` |
 
 ---
 

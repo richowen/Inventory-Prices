@@ -38,7 +38,18 @@ if [ ! -f "$DB_PATH" ]; then
     exit 1
 fi
 
-# ── 2. Safe SQLite snapshot ───────────────────────────────────────────────────
+# ── 2. Ensure sqlite3 CLI is available ───────────────────────────────────────
+if ! command -v sqlite3 >/dev/null 2>&1; then
+    log "sqlite3 not found — installing via apt-get..."
+    sudo apt-get update -qq && sudo apt-get install -y -qq sqlite3
+    if ! command -v sqlite3 >/dev/null 2>&1; then
+        log "ERROR: sqlite3 install failed"
+        exit 1
+    fi
+    log "sqlite3 installed OK"
+fi
+
+# ── 3. Safe SQLite snapshot ───────────────────────────────────────────────────
 # .backup is the correct way to copy a WAL-mode SQLite DB while the app is
 # running — it checkpoints the WAL and produces a consistent single-file copy.
 if ! sqlite3 "$DB_PATH" ".backup '${BACKUP_FILE}'"; then
@@ -49,7 +60,7 @@ fi
 SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
 log "Local snapshot: $BACKUP_FILE ($SIZE)"
 
-# ── 3. Send to Unraid via Taildrop ────────────────────────────────────────────
+# ── 4. Send to Unraid via Taildrop ────────────────────────────────────────────
 # tailscale file cp pushes the file to the Unraid node's Taildrop inbox.
 # The receiver (unraid_receive.sh running on Unraid) auto-accepts it.
 if tailscale file cp "$BACKUP_FILE" "${UNRAID_HOST}:"; then
@@ -60,13 +71,13 @@ else
     log "         Run 'tailscale status' to check connectivity"
 fi
 
-# ── 4. Rotate local backups ───────────────────────────────────────────────────
+# ── 5. Rotate local backups ───────────────────────────────────────────────────
 DELETED=$(find "$BACKUP_DIR" -name "prices_*.db" -mtime +${LOCAL_KEEP_DAYS} -print -delete | wc -l)
 if [ "$DELETED" -gt 0 ]; then
     log "Local rotation: removed $DELETED backup(s) older than ${LOCAL_KEEP_DAYS} days"
 fi
 
-# ── 5. Keep log file tidy (max 500 lines) ─────────────────────────────────────
+# ── 6. Keep log file tidy (max 500 lines) ─────────────────────────────────────
 if [ -f "$LOG" ]; then
     LINES=$(wc -l < "$LOG")
     if [ "$LINES" -gt 500 ]; then

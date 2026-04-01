@@ -109,8 +109,6 @@ INSERT OR IGNORE INTO settings (key, value) VALUES
 
 CREATE INDEX IF NOT EXISTS idx_products_active          ON products(active);
 CREATE INDEX IF NOT EXISTS idx_products_active_category ON products(active, category);
-CREATE INDEX IF NOT EXISTS idx_products_barcode         ON products(barcode)
-    WHERE barcode != '';
 CREATE INDEX IF NOT EXISTS idx_audit_log_changed_at     ON audit_log(changed_at DESC);
 CREATE INDEX IF NOT EXISTS idx_price_history_product    ON price_history(product_id, changed_at DESC);
 """
@@ -149,6 +147,13 @@ def init_db(app=None):
         if col not in existing_cols:
             db.execute(f"ALTER TABLE products ADD COLUMN {col} {definition}")
 
+    # Barcode index created here (after migration) so it works on existing DBs
+    # that just had the column added above as well as fresh installs.
+    db.execute(
+        "CREATE INDEX IF NOT EXISTS idx_products_barcode "
+        "ON products(barcode) WHERE barcode != ''"
+    )
+
     # ── Migration: users table — migrate single admin password ────────────────
     user_count = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
     if user_count == 0:
@@ -164,7 +169,7 @@ def init_db(app=None):
             print(
                 "  !! Existing SHA-256 password migrated to bcrypt.\n"
                 f"     Default password restored to: {default_pw}\n"
-                "     Please change it in Admin → Users immediately."
+                "     Please change it in Admin > Users immediately."
             )
         else:
             pw_hash = _bcrypt.hashpw(default_pw.encode(), _bcrypt.gensalt()).decode()

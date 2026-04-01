@@ -71,8 +71,6 @@ def main():
     db.execute("DELETE FROM price_history")
     db.execute("DELETE FROM audit_log")
     db.execute("DELETE FROM sqlite_sequence WHERE name IN ('products', 'price_history', 'audit_log')")
-    # Set the no_seed flag so the app never re-inserts sample data on restart
-    db.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('no_seed', '1')")
     db.commit()
     db.close()
 

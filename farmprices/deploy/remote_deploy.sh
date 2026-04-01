@@ -7,7 +7,6 @@ SERVICE_NAME="${SERVICE_NAME:-farmprices}"
 BACKUP_DIR="$APP_DIR/backups"
 DB_PATH="$APP_DIR/prices.db"
 TS="$(date +%Y-%m-%d_%H%M%S)"
-SKIP_GIT_SYNC="${SKIP_GIT_SYNC:-auto}"
 
 log() {
     echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
@@ -24,16 +23,7 @@ log "Starting remote deploy for $APP_DIR (branch: $BRANCH, service: $SERVICE_NAM
 
 require_cmd python3
 require_cmd sudo
-
-if [ "$SKIP_GIT_SYNC" = "1" ] || [ "$SKIP_GIT_SYNC" = "true" ]; then
-    NEED_GIT=0
-else
-    NEED_GIT=1
-fi
-
-if [ "$NEED_GIT" -eq 1 ]; then
-    require_cmd git
-fi
+require_cmd git
 
 if [ ! -d "$APP_DIR" ]; then
     log "ERROR: App directory not found: $APP_DIR"
@@ -44,15 +34,15 @@ cd "$APP_DIR"
 
 mkdir -p "$BACKUP_DIR"
 
-CURRENT_COMMIT="unknown"
-TARGET_COMMIT="unknown"
-HAS_GIT_REPO=0
+CURRENT_COMMIT="n/a"
+TARGET_COMMIT="n/a"
 if [ -d ".git" ]; then
-    HAS_GIT_REPO=1
     CURRENT_COMMIT="$(git rev-parse --short HEAD)"
     log "Current commit: $CURRENT_COMMIT"
 else
-    log "No git repository detected at $APP_DIR (.git missing)"
+    log "ERROR: No git repository detected at $APP_DIR (.git missing)"
+    log "Clone the repo first, then re-run deploy."
+    exit 1
 fi
 
 if [ -f "$DB_PATH" ]; then
@@ -63,22 +53,13 @@ else
     log "WARNING: Database not found at $DB_PATH (skipping backup)"
 fi
 
-if [ "$SKIP_GIT_SYNC" = "1" ] || [ "$SKIP_GIT_SYNC" = "true" ]; then
-    log "SKIP_GIT_SYNC enabled; skipping git fetch/reset"
-elif [ "$SKIP_GIT_SYNC" = "auto" ] && [ "$HAS_GIT_REPO" -eq 0 ]; then
-    log "SKIP_GIT_SYNC=auto and no git repo found; skipping git fetch/reset"
-elif [ "$HAS_GIT_REPO" -eq 1 ]; then
-    log "Fetching latest commit from origin/$BRANCH"
-    git fetch --prune origin "$BRANCH"
-    TARGET_COMMIT="$(git rev-parse --short "origin/$BRANCH")"
-    log "Target commit: $TARGET_COMMIT"
+log "Fetching latest commit from origin/$BRANCH"
+git fetch --prune origin "$BRANCH"
+TARGET_COMMIT="$(git rev-parse --short "origin/$BRANCH")"
+log "Target commit: $TARGET_COMMIT"
 
-    log "Checking out latest origin/$BRANCH"
-    git reset --hard "origin/$BRANCH"
-else
-    log "ERROR: SKIP_GIT_SYNC disabled but no git repository found"
-    exit 1
-fi
+log "Checking out latest origin/$BRANCH"
+git reset --hard "origin/$BRANCH"
 
 if [ ! -d "$APP_DIR/venv" ]; then
     log "Virtual environment not found. Creating venv..."

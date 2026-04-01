@@ -241,16 +241,16 @@ Change it immediately in **Admin → Settings → Change Admin Password**.
 
 ---
 
-## Part 7 — Manual Deploy over Tailscale (SCP + SSH)
+## Part 7 — Manual Deploy over Tailscale (Git Push + SSH Pull)
 
-This section keeps deployment simple: use **Tailscale + SCP + SSH** from your Windows PC, then run the deploy script on the Pi.
+This section keeps deployment simple: **push to GitHub from your Windows PC**, then run one PowerShell script that SSHes over Tailscale and tells the Pi to pull and restart.
 
 ### What this gives you
 
 - Secure remote access over your private Tailscale network
 - No router port forwarding
-- Simple manual deployment when you choose
-- Safe deploy sequence using `farmprices/deploy/remote_deploy.sh`
+- Simple one-command deployment from your Windows home PC
+- Safe deploy sequence using [`remote_deploy.sh`](farmprices/deploy/remote_deploy.sh)
 
 ### Step 16: Install and enable Tailscale on the Pi (one time)
 
@@ -270,14 +270,29 @@ In the Tailscale admin panel, confirm the Pi appears and note its Tailscale DNS 
 3. Confirm you can reach the Pi over Tailscale:
 
 ```powershell
-ssh richowen@farmprices-pi.tailnet-name.ts.net
+ssh richowen@farmprices.west-stonecat.ts.net
 ```
 
-### Step 18: Ensure deploy script is executable on Pi (one time)
+### Step 18: One-time Git and deploy prerequisites on Pi
+
+On the Pi, ensure the app is a git clone and can pull from GitHub:
+
+```bash
+cd /home/richowen
+git clone <your-repo-url> farmprices
+cd /home/richowen/farmprices
+git remote -v
+git checkout main
+git pull origin main
+```
+
+Then ensure deploy script is executable:
 
 ```bash
 chmod +x /home/richowen/farmprices/deploy/remote_deploy.sh
 ```
+
+If the repo is private, configure SSH deploy key/auth on the Pi so `git fetch` works non-interactively.
 
 Ensure your SSH user can restart services without an interactive password prompt:
 
@@ -291,18 +306,33 @@ Add this line (adjust username if needed):
 richowen ALL=(ALL) NOPASSWD:/bin/systemctl,/usr/bin/journalctl
 ```
 
-### Step 19: Deploy from Windows PC (repeat for each update)
+### Step 19: Create one-command deploy script on Windows (one time)
 
-From PowerShell on the Windows PC, upload your updated app folder with SCP:
+Use the included script [`scripts/deploy_from_home.ps1`](scripts/deploy_from_home.ps1).
+
+From PowerShell, run from your local repository root:
 
 ```powershell
-scp -r "C:\path\to\farmprices\*" richowen@farmprices-pi.tailnet-name.ts.net:/home/richowen/farmprices/
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1
 ```
 
-Then run the deploy script over SSH (forces SCP/manual mode by skipping git sync):
+What it does:
+1. Verifies you are on branch `main`
+2. Verifies working tree is clean
+3. Pushes to `origin/main`
+4. SSHes over Tailscale to the Pi
+5. Runs [`remote_deploy.sh`](farmprices/deploy/remote_deploy.sh), which pulls latest `origin/main`, installs deps, runs checks, and restarts service
+
+Optional flags:
 
 ```powershell
-ssh richowen@farmprices-pi.tailnet-name.ts.net "SKIP_GIT_SYNC=1 bash /home/richowen/farmprices/deploy/remote_deploy.sh"
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1 -PiHost "farmprices.west-stonecat.ts.net" -PiUser "richowen"
+```
+
+Skip push only if you already pushed:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\deploy_from_home.ps1 -SkipPush
 ```
 
 The script will:
@@ -326,6 +356,37 @@ Then test in browser:
 ```text
 http://farmprices.local
 ```
+
+### Step 20b: Enforce a clean client database (no test data)
+
+Run this after deployment and before client handover:
+
+```bash
+cd /home/richowen/farmprices
+source venv/bin/activate
+python reset_db.py
+```
+
+When prompted, type `RESET`.
+
+Then restart the service and verify the database is clean:
+
+```bash
+sudo systemctl restart farmprices
+sqlite3 /home/richowen/farmprices/prices.db "SELECT 'products', COUNT(*) FROM products UNION ALL SELECT 'price_history', COUNT(*) FROM price_history UNION ALL SELECT 'audit_log', COUNT(*) FROM audit_log;"
+```
+
+Expected result:
+
+```text
+products|0
+price_history|0
+audit_log|0
+```
+
+Notes:
+- Categories and units remain pre-populated by design.
+- No sample products are inserted by app startup.
 
 ### Step 21: Rollback procedure
 

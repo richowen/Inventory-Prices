@@ -61,7 +61,7 @@ def close_db(exc=None):
 
 
 def init_db():
-    """Create tables if they don't exist and seed with sample data if empty."""
+    """Create tables if they don't exist and initialize defaults for production use."""
     db = sqlite3.connect(DB_PATH)
     db.row_factory = sqlite3.Row
     db.execute("PRAGMA journal_mode=WAL")
@@ -146,69 +146,8 @@ def init_db():
     if existing_pw and len(existing_pw[0]) != 64:
         db.execute("UPDATE settings SET value=? WHERE key='admin_password'", (hashed,))
 
-    # Seed sample products if empty AND not flagged as production (no-seed)
-    count = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-    no_seed = db.execute("SELECT value FROM settings WHERE key='no_seed'").fetchone()
-    if count == 0 and not no_seed:
-        _seed_sample_data(db)
-
     db.commit()
     db.close()
-
-
-def _seed_sample_data(db):
-    sample = [
-        ("Cattle Nuts 25kg",           "Animal Feed",  "bag",   "Mole Valley Farmers", "01568 612345", 14.50, 35),
-        ("Sheep Nuts 25kg",            "Animal Feed",  "bag",   "Mole Valley Farmers", "01568 612345", 13.75, 35),
-        ("Horse & Pony Mix 20kg",      "Animal Feed",  "bag",   "Dodson & Horrell",    "01933 411177", 18.00, 30),
-        ("Pig Grower Pellets 25kg",    "Animal Feed",  "bag",   "Mole Valley Farmers", "01568 612345", 12.80, 35),
-        ("Poultry Layers Pellets 20kg","Animal Feed",  "bag",   "Allen & Page",        "01362 822900", 11.50, 35),
-        ("Calf Milk Replacer 10kg",    "Animal Feed",  "bag",   "Volac",               "01763 263300", 22.00, 30),
-        ("Goat Mix 20kg",              "Animal Feed",  "bag",   "Dodson & Horrell",    "01933 411177", 16.50, 30),
-        ("Wild Bird Seed 12.75kg",     "Animal Feed",  "bag",   "Johnston & Jeff",     "01904 692660",  8.50, 40),
-        ("Straw Bale (small square)",  "Bedding",      "each",  "Local Farm Direct",   "07700 900123",  4.50, 50),
-        ("Wood Shavings 20kg",         "Bedding",      "bag",   "Bedmax",              "01434 220060",  9.00, 40),
-        ("Hemp Bedding 20kg",          "Bedding",      "bag",   "Aubiose",             "01452 741444", 14.00, 35),
-        ("Rubber Stable Mat",          "Bedding",      "each",  "Rubber Flooring UK",  "01234 567890", 28.00, 40),
-        ("Stock Fencing Roll 50m",     "Fencing",      "roll",  "Tornado Wire",        "01952 293333", 42.00, 30),
-        ("Barbed Wire 200m",           "Fencing",      "roll",  "Tornado Wire",        "01952 293333", 18.50, 35),
-        ("Wooden Fence Post 1.8m",     "Fencing",      "each",  "Jacksons Fencing",    "01732 833833",  4.20, 40),
-        ("Electric Fence Post",        "Fencing",      "each",  "Gallagher",           "01189 813300",  1.80, 50),
-        ("Electric Fence Wire 500m",   "Fencing",      "roll",  "Gallagher",           "01189 813300", 22.00, 35),
-        ("Gate Hinge Set",             "Fencing",      "set",   "Jacksons Fencing",    "01732 833833",  6.50, 45),
-        ("Grass Seed Ryegrass 10kg",   "Seeds",        "bag",   "Germinal",            "01522 868714", 28.00, 30),
-        ("Wildflower Mix 1kg",         "Seeds",        "bag",   "Emorsgate Seeds",     "01553 829028", 18.00, 35),
-        ("Clover Seed 5kg",            "Seeds",        "bag",   "Germinal",            "01522 868714", 22.00, 30),
-        ("Maize Seed 50,000 seeds",    "Seeds",        "bag",   "Limagrain",           "01604 740600", 85.00, 25),
-        ("Growmore Fertiliser 10kg",   "Fertiliser",   "bag",   "Vitax",               "01530 510060", 12.00, 40),
-        ("Ammonium Nitrate 25kg",      "Fertiliser",   "bag",   "CF Fertilisers",      "01244 279000", 24.00, 25),
-        ("Lime 25kg",                  "Fertiliser",   "bag",   "Buxton Lime",         "01298 768500",  5.50, 45),
-        ("Chicken Manure Pellets 20kg","Fertiliser",   "bag",   "Vitax",               "01530 510060",  9.00, 40),
-        ("Muck Fork",                  "Tools",        "each",  "Bulldog Tools",       "01772 433316", 18.00, 45),
-        ("Hay Fork",                   "Tools",        "each",  "BulldogTools",       "01772 433316", 16.50, 45),
-        ("Yard Brush",                 "Tools",        "each",  "Bulldog Tools",       "01772 433316",  9.00, 50),
-        ("Wheelbarrow 85L",            "Tools",        "each",  "Haemmerlin",          "01952 293000", 42.00, 35),
-        ("Bucket 15L",                 "Tools",        "each",  "Stubbs",              "01902 458311",  4.50, 60),
-        ("Hose Pipe 30m",              "Tools",        "each",  "Hozelock",            "0121 313 1122",22.00, 40),
-        ("Iodine Spray 500ml",         "Vet Supplies", "each",  "Agri-Lloyd",          "01597 840000",  6.50, 50),
-        ("Wound Powder 200g",          "Vet Supplies", "each",  "Agri-Lloyd",          "01597 840000",  5.80, 50),
-        ("Fly Repellent Spray 500ml",  "Vet Supplies", "each",  "Battles",             "01482 782222",  8.20, 45),
-        ("Wormer Drench 1L",           "Vet Supplies", "each",  "Norbrook",            "028 8774 1211",18.50, 40),
-        ("Teat Dip 5L",                "Vet Supplies", "litre", "Agri-Lloyd",          "01597 840000", 12.00, 40),
-        ("Disposable Gloves (box 100)","Vet Supplies", "box",   "Agri-Lloyd",          "01597 840000",  7.50, 50),
-        ("Baler Twine 2-string",       "Other",        "each",  "Tama",                "01234 000000",  9.50, 40),
-        ("Silage Wrap 750mm",          "Other",        "roll",  "Trioplast",           "01234 000001", 28.00, 30),
-        ("Cable Ties (pack 100)",      "Other",        "pack",  "Local Merchant",      "01584 000000",  3.20, 60),
-        ("WD-40 400ml",                "Other",        "each",  "WD-40 Company",       "01908 555400",  4.80, 55),
-    ]
-    today = date.today().isoformat()
-    db.executemany(
-        """INSERT INTO products
-           (name, category, unit, supplier_name, supplier_tel,
-            cost_price, markup_pct, last_updated)
-           VALUES (?,?,?,?,?,?,?,?)""",
-        [(r[0], r[1], r[2], r[3], r[4], r[5], r[6], today) for r in sample]
-    )
 
 
 def get_setting(key, default=""):

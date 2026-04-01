@@ -197,12 +197,34 @@ def add_product():
         if new_supplier:
             msg += f" Supplier '{supplier}' saved."
         flash(msg, "success")
+
+        # "Save & Add Next" — redirect back to the blank add form with the
+        # last-used category/unit/supplier/markup pre-filled so repetitive
+        # entries (same supplier, same category) are as fast as possible.
+        if request.form.get("submit_action") == "add_next":
+            return redirect(url_for("admin.add_product",
+                                    preset_category=category,
+                                    preset_unit=unit,
+                                    preset_supplier=supplier,
+                                    preset_tel=tel,
+                                    preset_markup=markup_str))
+
         return redirect(url_for("admin.products"))
+
+    # Pre-fill values carried over from a previous "Save & Add Next"
+    preset = {
+        "category": request.args.get("preset_category", ""),
+        "unit":     request.args.get("preset_unit", ""),
+        "supplier": request.args.get("preset_supplier", ""),
+        "tel":      request.args.get("preset_tel", ""),
+        "markup":   request.args.get("preset_markup", ""),
+    }
 
     return render_template("admin_product_form.html",
                            product=None, action="Add",
                            categories=categories, units=units,
                            suppliers=suppliers,
+                           preset=preset,
                            shop_name=get_setting("shop_name"))
 
 

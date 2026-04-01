@@ -1,0 +1,158 @@
+{% extends "base_admin.html" %}
+{% block title %}Price History — {{ product.name }}{% endblock %}
+{% block page_title %}📈 Price History: {{ product.name }}{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('admin.edit_product', pid=product.id) }}" class="btn btn-amber btn-sm">✏ Edit Product</a>
+  <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">← Products</a>
+{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" crossorigin="anonymous"></script>
+{% endblock %}
+
+{% block content %}
+{% set active_nav = 'products' %}
+
+<div style="display:grid;grid-template-columns:2fr 1fr;gap:24px;align-items:start">
+
+  <!-- Chart card -->
+  <div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="font-size:1rem;color:var(--text-dark)">Cost Price Over Time</h3>
+      <span style="font-size:.82rem;color:#aaa">{{ history|length }} price change{{ 's' if history|length != 1 else '' }}</span>
+    </div>
+    {% if history %}
+      <canvas id="priceChart" style="max-height:320px"></canvas>
+    {% else %}
+      <div style="text-align:center;padding:40px;color:#ccc">
+        <div style="font-size:2rem;margin-bottom:8px">📊</div>
+        <p>No price changes recorded yet.</p>
+        <p style="font-size:.85rem;margin-top:4px">Changes will appear here after the first edit.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- Summary card -->
+  <div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px">
+    <h3 style="font-size:1rem;color:var(--text-dark);margin-bottom:14px">Current</h3>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Cost Price</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--text-dark)">{{ currency }}{{ "%.2f"|format(product.cost_price) }}</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Sell Price</div>
+      <div style="font-size:1.8rem;font-weight:800;color:var(--green-dark)">{{ currency }}{{ "%.2f"|format(sell_price) }}</div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Markup</div>
+      <div style="font-size:1rem;font-weight:700;color:var(--amber)">
+        {{ product.markup_pct|int if product.markup_pct is not none else 'Default' }}%
+      </div>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Category</div>
+      <div><span class="category-badge">{{ product.category }}</span></div>
+    </div>
+    <div>
+      <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Last Updated</div>
+      <div style="font-size:.9rem;color:#555">{{ product.last_updated }}</div>
+    </div>
+  </div>
+
+</div>
+
+{% if history %}
+<!-- History table -->
+<div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px;margin-top:24px">
+  <h3 style="font-size:1rem;color:var(--text-dark);margin-bottom:14px">Change Log</h3>
+  <div class="table-wrap">
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Date &amp; Time</th>
+        <th>Old Cost</th>
+        <th>New Cost</th>
+        <th>Change</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in history|reverse %}
+      <tr>
+        <td style="color:#888;font-size:.82rem;white-space:nowrap">{{ h.date }}</td>
+        <td style="color:#c62828">{{ currency }}{{ "%.2f"|format(h.old) }}</td>
+        <td style="color:#2e7d32;font-weight:700">{{ currency }}{{ "%.2f"|format(h.new) }}</td>
+        <td>
+          {% set diff = h.new - h.old %}
+          {% if diff > 0 %}
+            <span class="price-up">▲ {{ currency }}{{ "%.2f"|format(diff) }}</span>
+          {% elif diff < 0 %}
+            <span class="price-down">▼ {{ currency }}{{ "%.2f"|format(diff|abs) }}</span>
+          {% else %}
+            <span style="color:#aaa">—</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if history %}
+<script>
+const rawHistory = {{ history|tojson }};
+const currency   = {{ currency|tojson }};
+
+// Build labels and datasets
+const labels = rawHistory.map(h => h.date.slice(0,10));
+const costs  = rawHistory.map(h => h.new);
+
+// Add current value as last point
+if (rawHistory.length) {
+  labels.push('{{ product.last_updated }}');
+  costs.push({{ product.cost_price }});
+}
+
+const ctx = document.getElementById('priceChart').getContext('2d');
+new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels,
+    datasets: [{
+      label: 'Cost Price',
+      data: costs,
+      borderColor: '#2e7d32',
+      backgroundColor: 'rgba(76,175,80,.1)',
+      borderWidth: 2,
+      tension: 0.1,
+      pointRadius: 4,
+      pointBackgroundColor: '#2e7d32',
+      fill: true,
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => currency + ctx.parsed.y.toFixed(2)
+        }
+      }
+    },
+    scales: {
+      y: {
+        ticks: { callback: v => currency + v.toFixed(2) }
+      },
+      x: {
+        ticks: { maxTicksLimit: 8 }
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

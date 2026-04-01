@@ -1,0 +1,185 @@
+{% extends "base_admin.html" %}
+{% block title %}Users{% endblock %}
+{% block page_title %}User Management{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="document.getElementById('addUserPanel').classList.toggle('open')">+ Add User</button>
+{% endblock %}
+
+{% block head %}
+<style>
+  .add-panel {
+    background:var(--blue-pale); border:1px solid #90caf9;
+    border-radius:var(--radius); padding:20px; margin-bottom:20px; display:none;
+  }
+  .add-panel.open { display:block; }
+  .add-panel h3 { font-size:.95rem; color:var(--blue); margin-bottom:14px; }
+  .add-row { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; }
+  .add-row .form-group { margin:0; min-width:160px; }
+  .role-badge {
+    display:inline-block; padding:2px 10px; border-radius:20px;
+    font-size:.78rem; font-weight:700;
+  }
+  .role-admin { background:#1b5e20; color:white; }
+  .role-sales { background:var(--blue-pale); color:var(--blue); }
+  .status-active   { color:var(--green-mid); font-weight:600; font-size:.85rem; }
+  .status-inactive { color:#ccc; font-size:.85rem; }
+  .own-row td { background:#fffde7; }
+  details summary { cursor:pointer; font-size:.82rem; color:var(--blue); text-decoration:underline; }
+  details { margin-top:6px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set active_nav = 'users' %}
+
+<!-- Add user panel -->
+<div class="add-panel" id="addUserPanel">
+  <h3>➕ Add New User</h3>
+  <form method="POST" action="{{ url_for('admin.add_user') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="add-row">
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" name="username" maxlength="40" placeholder="e.g. sarah" required autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" name="password" minlength="6" placeholder="min 6 chars" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Role</label>
+        <select name="role">
+          <option value="sales">Sales (lookup only)</option>
+          <option value="admin">Admin (full access)</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Create User</button>
+    </div>
+  </form>
+</div>
+
+{% if users %}
+<div class="table-wrap">
+<table class="product-table">
+  <thead>
+    <tr>
+      <th>Username</th>
+      <th>Role</th>
+      <th>Status</th>
+      <th>Created</th>
+      <th>Last Login</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for u in users %}
+    <tr {% if u.id == current_user_id %}class="own-row"{% endif %}>
+      <td>
+        <strong>{{ u.username }}</strong>
+        {% if u.id == current_user_id %}
+          <span style="font-size:.72rem;color:#aaa;margin-left:6px">(you)</span>
+        {% endif %}
+      </td>
+      <td>
+        <span class="role-badge role-{{ u.role }}">{{ u.role }}</span>
+      </td>
+      <td>
+        {% if u.active %}<span class="status-active">● Active</span>
+        {% else %}<span class="status-inactive">○ Inactive</span>{% endif %}
+      </td>
+      <td style="font-size:.82rem;color:#888">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+      <td style="font-size:.82rem;color:#888">{{ u.last_login[:16] if u.last_login else 'Never' }}</td>
+      <td>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+
+          {% if u.id != current_user_id %}
+            <!-- Toggle active -->
+            <form method="POST" action="{{ url_for('admin.edit_user', uid=u.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="toggle_active">
+              <button type="submit" class="btn btn-secondary btn-sm"
+                      onclick="return confirm('{{ 'Deactivate' if u.active else 'Activate' }} user {{ u.username }}?')">
+                {{ '🔒 Deactivate' if u.active else '✅ Activate' }}
+              </button>
+            </form>
+
+            <!-- Change role -->
+            <form method="POST" action="{{ url_for('admin.edit_user', uid=u.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="action" value="change_role">
+              <input type="hidden" name="role" value="{{ 'sales' if u.role == 'admin' else 'admin' }}">
+              <button type="submit" class="btn btn-secondary btn-sm"
+                      onclick="return confirm('Change {{ u.username }} to {{ 'sales' if u.role == 'admin' else 'admin' }}?')">
+                → Make {{ 'Sales' if u.role == 'admin' else 'Admin' }}
+              </button>
+            </form>
+
+            <!-- Admin reset password -->
+            <details>
+              <summary>🔑 Reset Password</summary>
+              <form method="POST" action="{{ url_for('admin.edit_user', uid=u.id) }}"
+                    style="margin-top:8px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="reset_password">
+                <input type="password" name="new_password" placeholder="New password (min 6)" minlength="6"
+                       required autocomplete="new-password"
+                       style="padding:6px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+                <button type="submit" class="btn btn-amber btn-sm">Set Password</button>
+              </form>
+            </details>
+
+            <!-- Delete -->
+            <form method="POST" action="{{ url_for('admin.delete_user', uid=u.id) }}" style="display:inline">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-sm"
+                      onclick="return confirm('Delete user {{ u.username }}? This cannot be undone.')">
+                🗑 Delete
+              </button>
+            </form>
+
+          {% else %}
+            <!-- Self: change own password only -->
+            <details>
+              <summary>🔐 Change My Password</summary>
+              <form method="POST" action="{{ url_for('admin.edit_user', uid=u.id) }}"
+                    style="margin-top:10px">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="change_own_password">
+                <div class="form-group" style="margin-bottom:8px">
+                  <label>Current Password</label>
+                  <input type="password" name="current_password" required autocomplete="current-password"
+                         style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <label>New Password</label>
+                  <input type="password" name="new_password" minlength="6" required autocomplete="new-password"
+                         style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+                </div>
+                <div class="form-group" style="margin-bottom:12px">
+                  <label>Confirm New Password</label>
+                  <input type="password" name="confirm_password" required autocomplete="new-password"
+                         style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">Change Password</button>
+              </form>
+            </details>
+          {% endif %}
+
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p style="margin-top:10px;font-size:.8rem;color:#aaa">
+  {{ users|length }} user{{ 's' if users|length != 1 else '' }}.
+  Admin users have full access. Sales users can only search prices (sell prices only, no cost prices).
+</p>
+{% else %}
+<div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
+  <div class="no-results-icon">👥</div>
+  <p>No users found.</p>
+</div>
+{% endif %}
+{% endblock %}

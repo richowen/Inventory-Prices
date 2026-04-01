@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shelf Labels — {{ shop_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body { background: white; }
+    .labels-toolbar {
+      background: var(--amber-pale);
+      border-bottom: 2px solid var(--amber);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .labels-toolbar .no-print { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .labels-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 4px;
+      padding: 16px;
+    }
+    .label-card {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 10px 12px;
+      text-align: center;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      background: white;
+    }
+    .label-name {
+      font-size: .8rem;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 4px;
+      line-height: 1.2;
+    }
+    .label-price {
+      font-size: 1.6rem;
+      font-weight: 900;
+      color: var(--green-dark);
+      line-height: 1;
+    }
+    .label-unit {
+      font-size: .68rem;
+      color: #999;
+      margin-top: 2px;
+    }
+    .label-category {
+      font-size: .65rem;
+      color: #bbb;
+      margin-top: 4px;
+      text-transform: uppercase;
+      letter-spacing: .4px;
+    }
+    .label-barcode {
+      font-size: .6rem;
+      color: #ddd;
+      margin-top: 4px;
+      font-family: monospace;
+    }
+    .label-shop {
+      font-size: .6rem;
+      color: #ddd;
+      margin-top: 6px;
+      border-top: 1px solid #eee;
+      padding-top: 4px;
+    }
+
+    @media print {
+      .no-print { display: none !important; }
+      .labels-toolbar { display: none !important; }
+      .labels-grid { padding: 0; gap: 2px; }
+      body { background: white; }
+    }
+
+    @media (max-width: 600px) {
+      .labels-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="labels-toolbar no-print">
+    <strong>🏷 Shelf Labels</strong>
+    <form method="GET" style="display:flex;gap:8px;align-items:center">
+      <select name="category" onchange="this.form.submit()"
+              style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+        <option value="">All Categories</option>
+        {% for cat in categories %}
+          <option value="{{ cat }}" {% if cat == cat_filter %}selected{% endif %}>{{ cat }}</option>
+        {% endfor %}
+      </select>
+    </form>
+    <span style="font-size:.85rem;color:#888">{{ products|length }} label{{ 's' if products|length != 1 else '' }}</span>
+    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print Labels</button>
+    <a href="{{ url_for('admin.products') }}" class="btn btn-secondary btn-sm">← Admin</a>
+    <span style="font-size:.78rem;color:#aaa">Generated {{ generated }}</span>
+  </div>
+
+  <div class="labels-grid">
+    {% for p in products %}
+    <div class="label-card">
+      <div class="label-name">{{ p.name }}</div>
+      <div class="label-price">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</div>
+      <div class="label-unit">per {{ p.unit }}</div>
+      <div class="label-category">{{ p.category }}</div>
+      {% if p.barcode %}
+        <div class="label-barcode">{{ p.barcode }}</div>
+      {% endif %}
+      <div class="label-shop">{{ shop_name }}</div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if not products %}
+  <div style="text-align:center;padding:60px;color:#aaa">
+    <div style="font-size:3rem;margin-bottom:12px">🏷</div>
+    <p>No products found.
+      {% if cat_filter %}Try a different category.{% endif %}
+    </p>
+  </div>
+  {% endif %}
+
+</body>
+</html>

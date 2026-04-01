@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+.eggs/
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env.local
+
+# Environment / secrets — NEVER commit these
+.env
+*.env
+
+# SQLite database — runtime data
+*.db
+*.sqlite
+*.sqlite3
+
+# App log output
+app_output.txt
+
+# OS / editor
+.DS_Store
+Thumbs.db
+nul
+*.swp
+*.swo
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Uploads (CSV import temp files)
+uploads/
+
+# Backup files
+*.bak
+backups/

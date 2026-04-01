@@ -1,0 +1,137 @@
+{% extends "base_admin.html" %}
+{% block title %}Suppliers{% endblock %}
+{% block page_title %}Suppliers{% endblock %}
+{% block topbar_actions %}
+  <button class="btn btn-primary btn-sm" onclick="document.getElementById('addPanel').classList.toggle('open')">+ Add Supplier</button>
+{% endblock %}
+
+{% block head %}
+<style>
+  .add-panel {
+    background:var(--blue-pale); border:1px solid #90caf9;
+    border-radius:var(--radius); padding:20px; margin-bottom:20px; display:none;
+  }
+  .add-panel.open { display:block; }
+  .add-panel h3 { font-size:.95rem; color:var(--blue); margin-bottom:14px; }
+  details summary { cursor:pointer; font-size:.82rem; color:var(--blue); text-decoration:underline; }
+  details { margin-top:4px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set active_nav = 'suppliers' %}
+
+<div class="add-panel" id="addPanel">
+  <h3>➕ Add Supplier</h3>
+  <form method="POST" action="{{ url_for('admin.add_supplier') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="form-grid" style="max-width:680px">
+      <div class="form-group">
+        <label>Name *</label>
+        <input type="text" name="name" maxlength="100" placeholder="e.g. Mole Valley Farmers" required>
+      </div>
+      <div class="form-group">
+        <label>Phone</label>
+        <input type="text" name="tel" maxlength="40" placeholder="01568 612345">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" name="email" maxlength="100" placeholder="orders@supplier.com">
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" name="notes" maxlength="500" placeholder="Optional notes">
+      </div>
+    </div>
+    <div style="margin-top:14px">
+      <button type="submit" class="btn btn-primary btn-sm">Add Supplier</button>
+    </div>
+  </form>
+</div>
+
+{% if suppliers %}
+<div class="table-wrap">
+<table class="product-table">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Phone</th>
+      <th>Email</th>
+      <th style="text-align:center">Products</th>
+      <th>Notes</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in suppliers %}
+    <tr>
+      <td><strong>{{ s.name }}</strong></td>
+      <td>
+        {% if s.tel %}
+          <a href="tel:{{ s.tel }}" style="color:inherit;text-decoration:none">{{ s.tel }}</a>
+        {% else %}—{% endif %}
+      </td>
+      <td>
+        {% if s.email %}
+          <a href="mailto:{{ s.email }}" style="font-size:.85rem">{{ s.email }}</a>
+        {% else %}—{% endif %}
+      </td>
+      <td style="text-align:center">
+        {% if s.product_count > 0 %}
+          <span class="category-badge">{{ s.product_count }}</span>
+        {% else %}
+          <span style="color:#ccc;font-size:.82rem">none</span>
+        {% endif %}
+      </td>
+      <td style="color:#888;font-size:.85rem">{{ s.notes or '—' }}</td>
+      <td>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+          <details>
+            <summary>✏ Edit</summary>
+            <form method="POST" action="{{ url_for('admin.edit_supplier', sid=s.id) }}"
+                  style="margin-top:10px">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:500px">
+                <div class="form-group">
+                  <label>Name</label>
+                  <input type="text" name="name" value="{{ s.name }}" maxlength="100" required>
+                </div>
+                <div class="form-group">
+                  <label>Phone</label>
+                  <input type="text" name="tel" value="{{ s.tel }}" maxlength="40">
+                </div>
+                <div class="form-group">
+                  <label>Email</label>
+                  <input type="email" name="email" value="{{ s.email }}" maxlength="100">
+                </div>
+                <div class="form-group">
+                  <label>Notes</label>
+                  <input type="text" name="notes" value="{{ s.notes }}" maxlength="500">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm" style="margin-top:10px">Save</button>
+            </form>
+          </details>
+          <form method="POST" action="{{ url_for('admin.delete_supplier', sid=s.id) }}" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger btn-sm"
+                    onclick="return confirm('Delete supplier {{ s.name|e }}?\n{% if s.product_count %}WARNING: {{ s.product_count }} product(s) reference this supplier.{% endif %}')">
+              🗑 Delete
+            </button>
+          </form>
+        </div>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p style="margin-top:10px;font-size:.8rem;color:#aaa">{{ suppliers|length }} supplier{{ 's' if suppliers|length != 1 else '' }}</p>
+{% else %}
+<div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
+  <div class="no-results-icon">🏭</div>
+  <p>No suppliers yet.</p>
+  <p style="margin-top:8px;font-size:.9rem;color:#aaa">Add suppliers to get phone/email autofill when editing products.</p>
+</div>
+{% endif %}
+{% endblock %}

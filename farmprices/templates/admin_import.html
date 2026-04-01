@@ -1,0 +1,165 @@
+{% extends "base_admin.html" %}
+{% block title %}Import CSV{% endblock %}
+{% block page_title %}Import Products from CSV{% endblock %}
+{% block topbar_actions %}
+  <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">← Back to Products</a>
+{% endblock %}
+
+{% block head %}
+<style>
+  .import-zone {
+    border: 2px dashed var(--grey-mid); border-radius: var(--radius);
+    padding: 32px; text-align: center; background: white;
+    box-shadow: var(--shadow); transition: border-color .2s;
+  }
+  .import-zone.drag-over { border-color: var(--green-light); background: var(--green-pale); }
+  .import-zone input[type=file] { margin: 0 auto; display: block; }
+  .preview-table { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .preview-table th { background: var(--green-mid); color: white; padding: 6px 10px; text-align: left; }
+  .preview-table td { padding: 6px 10px; border-bottom: 1px solid var(--grey-mid); white-space: nowrap; }
+  .preview-table tr:nth-child(even) td { background: var(--grey-light); }
+  .col-map { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
+  .col-map-item { display: flex; flex-direction: column; gap: 4px; min-width: 160px; }
+  .col-map-item label { font-size: .8rem; font-weight: 600; color: var(--text-mid); }
+  .col-map-item select { padding: 6px 10px; border: 1px solid var(--grey-mid); border-radius: 6px; font-size: .88rem; }
+  .import-options { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 16px; }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set active_nav = 'products' %}
+
+{% if preview_rows %}
+  <!-- Step 2: Map columns and confirm -->
+  <div style="background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:24px;margin-bottom:20px">
+    <h3 style="font-size:1rem;margin-bottom:4px">Step 2: Map Columns &amp; Import</h3>
+    <p style="font-size:.88rem;color:#888;margin-bottom:16px">
+      Showing first {{ preview_rows|length }} of {{ total }} rows. Map your CSV columns below, then click Import.
+    </p>
+
+    <!-- Preview table -->
+    <div class="table-wrap" style="max-height:280px;overflow-y:auto;margin-bottom:16px">
+      <table class="preview-table">
+        <thead>
+          <tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr>
+        </thead>
+        <tbody>
+          {% for row in preview_rows %}
+          <tr>{% for h in headers %}<td>{{ row.get(h,'') }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <form method="POST" action="{{ url_for('admin.import_csv') }}" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="import">
+      <!-- Re-submit file via hidden field trick is not possible; user re-selects but we use session preview -->
+      <!-- For simplicity: re-upload the file along with the mapping form -->
+      <p style="font-size:.82rem;color:#888;margin-bottom:8px">Re-select your CSV file to confirm import:</p>
+      <input type="file" name="csv_file" accept=".csv" required style="margin-bottom:14px">
+
+      <h4 style="font-size:.9rem;margin-bottom:10px">Column Mapping</h4>
+      <div class="col-map">
+        {% set col_fields = [
+          ('col_name', 'Product Name *', 'Product Name'),
+          ('col_category', 'Category', 'Category'),
+          ('col_unit', 'Unit', 'Unit'),
+          ('col_supplier', 'Supplier Name', 'Supplier'),
+          ('col_tel', 'Supplier Tel', 'Supplier Tel'),
+          ('col_cost', 'Cost Price *', 'Cost Price (£)'),
+          ('col_markup', 'Markup %', 'Markup %'),
+          ('col_barcode', 'Barcode', 'Barcode'),
+          ('col_notes', 'Notes', 'Notes'),
+        ] %}
+        {% for field, label, default in col_fields %}
+        <div class="col-map-item">
+          <label>{{ label }}</label>
+          <select name="{{ field }}">
+            <option value="">(skip)</option>
+            {% for h in headers %}
+              <option value="{{ h }}" {% if h == default or h.startswith(default) %}selected{% endif %}>{{ h }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="import-options">
+        <div>
+          <label style="font-size:.85rem;font-weight:600">Default Category</label><br>
+          <select name="default_category" style="padding:6px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+            {% for cat in categories %}<option value="{{ cat }}">{{ cat }}</option>{% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.85rem;font-weight:600">Default Unit</label><br>
+          <select name="default_unit" style="padding:6px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
+            {% for u in units %}<option value="{{ u }}">{{ u }}</option>{% endfor %}
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:16px">
+          <input type="checkbox" id="skip_dupes" name="skip_duplicates" value="1" checked>
+          <label for="skip_dupes" style="font-size:.88rem">Skip products with duplicate names</label>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--grey-mid);display:flex;gap:12px">
+        <button type="submit" class="btn btn-primary"
+                onclick="return confirm('Import {{ total }} products from CSV?')">
+          ⬆ Import {{ total }} Products
+        </button>
+        <a href="{{ url_for('admin.import_csv') }}" class="btn btn-secondary">Start Over</a>
+      </div>
+    </form>
+  </div>
+
+{% else %}
+  <!-- Step 1: Upload file -->
+  <div style="max-width:600px">
+    <div class="import-zone" id="dropZone">
+      <div style="font-size:2.5rem;margin-bottom:12px">📂</div>
+      <p style="font-size:1rem;font-weight:600;margin-bottom:6px">Upload a CSV file</p>
+      <p style="font-size:.88rem;color:#888;margin-bottom:16px">
+        Drag &amp; drop or click to select. Max 4 MB.
+      </p>
+      <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="action" value="preview">
+        <input type="file" name="csv_file" id="csvFile" accept=".csv" required
+               style="display:block;margin:0 auto 16px">
+        <button type="submit" class="btn btn-primary">Preview Import</button>
+      </form>
+    </div>
+
+    <div style="margin-top:24px;background:white;border-radius:var(--radius);box-shadow:var(--shadow);padding:20px">
+      <h4 style="font-size:.95rem;margin-bottom:10px">Expected CSV Format</h4>
+      <p style="font-size:.85rem;color:#555;margin-bottom:8px">
+        Column names are configurable — you'll map them in the next step. Suggested headers:
+      </p>
+      <code style="display:block;background:var(--grey-light);padding:10px;border-radius:6px;font-size:.8rem;line-height:1.6">
+        Product Name, Category, Unit, Supplier, Supplier Tel, Cost Price (£), Markup %, Barcode, Notes
+      </code>
+      <p style="font-size:.82rem;color:#aaa;margin-top:10px">
+        Only Product Name and Cost Price are required. Unknown categories/units fall back to defaults.
+      </p>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+const zone = document.getElementById('dropZone');
+const inp  = document.getElementById('csvFile');
+if (zone && inp) {
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) { inp.files = e.dataTransfer.files; }
+  });
+}
+</script>
+{% endblock %}

@@ -34,12 +34,14 @@ def _counts(db):
 
 
 def _wipe(db):
-    for t in ("products","suppliers","price_history","audit_log"):
+    db.execute("PRAGMA foreign_keys=OFF")
+    for t in ("price_history","audit_log","products","suppliers"):
         db.execute(f"DELETE FROM {t}")
     db.execute(
         "DELETE FROM sqlite_sequence WHERE name IN "
         "('products','suppliers','price_history','audit_log')"
     )
+    db.execute("PRAGMA foreign_keys=ON")
 
 
 def _backup():
@@ -65,9 +67,11 @@ def reset_to_deployment_start():
     print(f"\n  Backup created: {bk}")
 
     _wipe(db)
-    # Also wipe and re-seed categories so any test categories are gone
+    # Also wipe and re-seed categories — disable FK for self-referential delete
+    db.execute("PRAGMA foreign_keys=OFF")
     db.execute("DELETE FROM categories")
     db.execute("DELETE FROM sqlite_sequence WHERE name='categories'")
+    db.execute("PRAGMA foreign_keys=ON")
     # Re-seed default units (in case they were cleared)
     for u in ["each","bag","kg","litre","roll","box","metre","pair","set","pack"]:
         db.execute("INSERT OR IGNORE INTO units (name) VALUES (?)",(u,))

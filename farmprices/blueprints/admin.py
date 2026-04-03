@@ -791,7 +791,8 @@ def history():
         "product_added", "product_edited", "product_deleted", "product_restored",
         "price_changed", "category_added", "category_deleted",
         "unit_added", "unit_deleted", "settings_changed",
-        "admin_login", "admin_logout", "user_added", "user_edited", "user_deleted",
+        "admin_login", "admin_logout", "login_failed",
+        "user_added", "user_edited", "user_deleted",
         "supplier_added", "supplier_edited", "supplier_deleted",
     ]
 
@@ -841,6 +842,15 @@ def review():
 
     rows     = db.execute(q, params).fetchall()
     enriched = _enrich(rows, default_markup, rounding)
+    today    = date.today()
+    for p in enriched:
+        if p.get("last_updated"):
+            try:
+                p["days_old"] = (today - date.fromisoformat(p["last_updated"])).days
+            except Exception:
+                p["days_old"] = 999
+        else:
+            p["days_old"] = 999
 
     return render_template("admin_review.html",
                            products=enriched,
@@ -862,8 +872,7 @@ def settings():
         action = request.form.get("action", "save_settings")
 
         if action == "save_settings":
-            old_shop    = get_setting("shop_name")
-            old_markup  = get_setting("default_markup")
+            old = {k: get_setting(k) for k in ("shop_name","default_markup","price_rounding","currency","review_days")}
             shop_name   = request.form.get("shop_name", "").strip()[:80]
             raw_markup  = request.form.get("default_markup", "30").strip()
             rounding    = request.form.get("price_rounding", "none")
@@ -882,20 +891,17 @@ def settings():
             except ValueError:
                 review_days = "30"
 
-            for key, val in [
-                ("shop_name",      shop_name),
-                ("default_markup", str(markup_val)),
-                ("price_rounding", rounding),
-                ("currency",       currency),
-                ("review_days",    review_days),
-            ]:
+            new = {"shop_name": shop_name, "default_markup": str(markup_val),
+                   "price_rounding": rounding, "currency": currency, "review_days": review_days}
+
+            for key, val in new.items():
                 db.execute("UPDATE settings SET value=? WHERE key=?", (val, key))
 
+            diffs = [f"{k}: {old[k]!r}→{new[k]!r}" for k in new if old.get(k) != new[k]]
             log_event(db, "settings_changed",
                       changed_by=_current_user(),
-                      notes=f"shop: {old_shop!r}→{shop_name!r}; markup: {old_markup}→{markup_val}",
-                      old_data={"shop_name": old_shop, "default_markup": old_markup},
-                      new_data={"shop_name": shop_name, "default_markup": str(markup_val)})
+                      notes="; ".join(diffs) or "no changes",
+                      old_data=old, new_data=new)
             db.commit()
             flash("Settings saved.", "success")
             return redirect(url_for("admin.settings"))
@@ -1201,23 +1207,31 @@ def bulk_action():
         if cat not in _flat_cats(db):
             flash("Invalid category.", "error")
             return redirect(url_for("admin.products"))
-        ph = ",".join("?" * len(ids))
-        db.execute(f"UPDATE products SET category=?,last_updated=date('now') WHERE id IN ({ph})", [cat]+ids)
-        log_event(db, "product_edited", changed_by=_current_user(),
-                  notes=f"Bulk category → {cat!r} for {len(ids)} products")
+        for pid in ids:
+            p = db.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+            if not p: continue
+            db.execute("UPDATE products SET category=?,last_updated=date('now') WHERE id=?", (cat, pid))
+            log_event(db, "product_edited", product_id=pid, product_name=p["name"],
+                      changed_by=_current_user(),
+                      notes=f"Bulk category: {p['category']!r} → {cat!r}",
+                      old_data={"category": p["category"]}, new_data={"category": cat})
         db.commit()
         flash(f"Category updated for {len(ids)} product(s).", "success")
     elif action == "set_supplier":
         sup = request.form.get("bulk_supplier_val", "").strip()
         tel = ""
         if sup:
-            row = db.execute("SELECT tel FROM suppliers WHERE name=? COLLATE NOCASE", (sup,)).fetchone()
-            if row: tel = row["tel"] or ""
-        ph = ",".join("?" * len(ids))
-        db.execute(f"UPDATE products SET supplier_name=?,supplier_tel=?,last_updated=date('now') WHERE id IN ({ph})",
-                   [sup, tel]+ids)
-        log_event(db, "product_edited", changed_by=_current_user(),
-                  notes=f"Bulk supplier → {sup!r} for {len(ids)} products")
+            srow = db.execute("SELECT tel FROM suppliers WHERE name=? COLLATE NOCASE", (sup,)).fetchone()
+            if srow: tel = srow["tel"] or ""
+        for pid in ids:
+            p = db.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+            if not p: continue
+            db.execute("UPDATE products SET supplier_name=?,supplier_tel=?,last_updated=date('now') WHERE id=?",
+                       (sup, tel, pid))
+            log_event(db, "product_edited", product_id=pid, product_name=p["name"],
+                      changed_by=_current_user(),
+                      notes=f"Bulk supplier: {p['supplier_name']!r} → {sup!r}",
+                      old_data={"supplier_name": p["supplier_name"]}, new_data={"supplier_name": sup})
         db.commit()
         flash(f"Supplier updated for {len(ids)} product(s).", "success")
     elif action in ("set_markup", "increase_markup", "decrease_markup"):

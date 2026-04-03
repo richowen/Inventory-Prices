@@ -13,9 +13,9 @@ from db import get_db
 def apply_rounding(price: float, mode: str) -> float:
     """Round a sell price according to the shop's configured rounding mode."""
     if mode == "0.05":
-        return round(round(price / 0.05) * 0.05, 2)
+        return round(round(price / 0.05 + 1e-9) * 0.05, 2)
     elif mode == "0.10":
-        return round(round(price / 0.10) * 0.10, 2)
+        return round(round(price / 0.10 + 1e-9) * 0.10, 2)
     elif mode == "0.99":
         # Charm pricing: floor to nearest pound + 0.99 (but don't go below 0.99)
         floored = math.floor(price)

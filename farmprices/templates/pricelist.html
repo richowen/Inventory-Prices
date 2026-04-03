@@ -2,84 +2,124 @@
 {% block title %}Price List{% endblock %}
 {% block page_title %}🖨 Price List{% endblock %}
 {% block topbar_actions %}
-  <span style="font-size:.82rem;color:#888;">Generated {{ generated }}</span>
-  <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print / Save PDF</button>
+<span style="font-size:.82rem;color:#888;">Generated {{ generated }}</span>
+<button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print / Save PDF</button>
 {% endblock %}
 {% block head %}
 <style>
-/* override admin content padding for full-width use */
-.admin-content{padding:12px 14px!important;}
-.pl-body{padding:4px 0 16px;}
-.print-stamp{display:none;}
-.pl-cols{column-count:2;column-gap:12px;}
-.cat-block{break-inside:avoid;margin-bottom:12px;}
-.cat-heading{background:#d4edda;color:#1b5e20;font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 7px;margin:0 0 2px;}
-.pl-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-.pl-table th{background:#f1f8f1;color:#2e5d34;padding:3px 6px;text-align:left;font-size:.73rem;font-weight:700;border-bottom:1px solid #c8e6c9;}
+/* ── Screen ─────────────────────────────────────────── */
+.admin-content{padding:10px 14px!important;}
+.pl-body{padding:4px 0 20px;}
+.pl-cat-table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+.pl-cat-table>thead{display:none;}
+.pl-cat-table>tbody>tr>td{padding:0;}
+.cat-title{background:#1b5e20;color:#fff;font-size:.82rem;font-weight:800;text-transform:uppercase;letter-spacing:.5px;padding:5px 9px;}
+.cat-heading-bar{display:none;}
+.sub-heading{background:#eaf4ea;color:#2e5d34;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.3px;padding:2px 7px 2px 14px;margin:6px 0 2px;border-left:3px solid #a5d6a7;}
+.pl-table{width:100%;border-collapse:collapse;font-size:.83rem;margin-bottom:4px;}
+.pl-table th{background:#f1f8f1;color:#2e5d34;padding:3px 6px;text-align:left;font-size:.72rem;font-weight:700;border-bottom:1px solid #c8e6c9;}
 .pl-table th.r,.pl-table td.r{text-align:right;}
-.pl-table td{padding:3px 6px;border-bottom:1px solid #f0f0f0;line-height:1.35;}
+.pl-table td{padding:3px 6px;border-bottom:1px solid #f0f0f0;line-height:1.3;}
 .pl-table tr:last-child td{border-bottom:none;}
-.pl-table tr:nth-child(even) td{background:#fafff9;}
-.pl-name{font-weight:700;font-size:.92rem;}
-.pl-sup{color:#888;font-size:.75rem;}
-.pl-cost{color:#555;font-size:.84rem;font-weight:600;}
-.pl-sell{font-weight:900;color:#1b5e20;font-size:1rem;}
+.pl-table tr:nth-child(even) td{background:#e8f5e9;}
+.pl-name{font-weight:700;font-size:.9rem;}
+.pl-sup{color:#888;font-size:.73rem;}
+.pl-cost{color:#555;font-size:.82rem;font-weight:600;}
+.pl-sell{font-weight:900;color:#1b5e20;font-size:.98rem;}
+.badge-new{display:inline-block;background:#2e7d32;color:#fff;font-size:.62rem;font-weight:800;padding:1px 5px;border-radius:3px;vertical-align:middle;margin-left:4px;letter-spacing:.3px;}
+.badge-upd{display:inline-block;background:#e65100;color:#fff;font-size:.62rem;font-weight:800;padding:1px 5px;border-radius:3px;vertical-align:middle;margin-left:4px;letter-spacing:.3px;}
+/* ── Print ──────────────────────────────────────────── */
 @media print{
-  @page{size:A4 portrait;margin:12mm;}
+  @page{size:A4 portrait;margin:0;}
   .admin-content{padding:0!important;}
-  .print-stamp{
-    display:flex!important;justify-content:space-between;align-items:center;
-    background:#1b5e20!important;color:#fff;
-    padding:4pt 8pt;margin-bottom:8pt;font-size:8pt;
+  .pl-body{padding:0;}
+  .pl-cat-table{width:100%;border-collapse:collapse;margin:0;}
+  .pl-break{page-break-before:always;}
+  /* show the per-category thead (green header bar) */
+  .pl-cat-table>thead{
+    display:table-header-group!important;
     -webkit-print-color-adjust:exact;print-color-adjust:exact;
   }
-  .print-stamp .ps-name{font-weight:800;font-size:9pt;}
-  .print-stamp .ps-right{display:flex;gap:10pt;align-items:center;}
-  .print-stamp .ps-date{opacity:.9;}
-  .print-stamp .ps-warn{background:rgba(255,255,255,.2);padding:1pt 5pt;border-radius:2pt;font-size:7.5pt;}
-  .pl-body{padding:0;}
-  .pl-cols{column-count:2;column-gap:8mm;}
-  .cat-block{break-inside:avoid;margin-bottom:7pt;}
-  .cat-heading{background:#d4edda!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:7pt;padding:2pt 4pt;}
-  .pl-table{font-size:8pt;}
-  .pl-table th{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:7pt;padding:1pt 4pt;}
-  .pl-table td{padding:1pt 4pt;}
-  .pl-table tr:nth-child(even) td{background:#f8fff8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-  .pl-sell{color:#1b5e20!important;font-size:9.5pt!important;font-weight:900!important;}
-  .pl-cost{color:#444!important;font-size:8.5pt!important;font-weight:600!important;}
+  .pl-cat-table>thead td{
+    background:#1b5e20!important;color:#fff;
+    padding:9pt 20pt;font-size:10.5pt;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .pl-cat-table>tbody>tr>td{padding:10pt 20pt 18pt;}
+  .stamp-inner{display:flex;justify-content:space-between;align-items:center;}
+  .ps-name{font-weight:800;font-size:12pt;}
+  .ps-right{display:flex;gap:12pt;align-items:center;}
+  .ps-date{opacity:.9;font-size:9.5pt;}
+  .ps-warn{background:rgba(255,255,255,.2);padding:1.5pt 7pt;border-radius:2pt;font-size:9pt;}
+  .ps-legend{display:flex;gap:10pt;font-size:9pt;opacity:.9;}
+  .cat-title{background:#d4edda!important;color:#1b5e20;font-size:13pt;font-weight:900;text-transform:uppercase;letter-spacing:.5px;padding:6pt 0 5pt;margin-bottom:6pt;border-bottom:2pt solid #a5d6a7;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .cat-heading-bar{display:none;}
+  .sub-heading{background:#eaf4ea!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:10pt;padding:3pt 0 3pt 14pt;margin:8pt 0 3pt;border-left:3pt solid #a5d6a7;}
+  .pl-table{font-size:10pt;width:100%;}
+  .pl-table th{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:9pt;padding:3pt 8pt;}
+  .pl-table td{padding:4pt 8pt;line-height:1.45;}
+  .pl-table tr:nth-child(even) td{background:#d7eed9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pl-sell{color:#1b5e20!important;font-size:11pt!important;font-weight:900!important;}
+  .pl-cost{color:#444!important;font-size:10pt!important;font-weight:600!important;}
+  .badge-new{background:#2e7d32!important;color:#fff!important;font-size:7pt;padding:1pt 4pt;border-radius:2pt;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .badge-upd{background:#e65100!important;color:#fff!important;font-size:7pt;padding:1pt 4pt;border-radius:2pt;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;}
 }
 </style>
 {% endblock %}
 {% block content %}
 <div class="pl-body">
-  <div class="print-stamp">
-    <span class="ps-name">🌿 {{ shop_name }} — Price List</span>
-    <span class="ps-right">
-      <span class="ps-date">Generated: {{ generated }}</span>
-      <span class="ps-warn">⚠ Verify date — do not use if out of date</span>
-    </span>
-  </div>
-  <div class="pl-cols">
-    {% for category, items in by_category.items() %}
-    <div class="cat-block">
-      <div class="cat-heading">{{ category }}</div>
-      <table class="pl-table">
-        <thead><tr>
-          <th>Product</th><th>Supplier</th><th class="r">Cost</th><th class="r">Sell</th>
-        </tr></thead>
-        <tbody>
-          {% for p in items %}
-          <tr>
-            <td class="pl-name">{{ p.name }}</td>
-            <td class="pl-sup">{{ p.supplier_name or '—' }}</td>
-            <td class="r pl-cost">{{ currency }}{{ "%.2f"|format(p.cost_price) }}</td>
-            <td class="r pl-sell">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+{% for section in sections %}
+<table class="pl-cat-table{% if not loop.first %} pl-break{% endif %}">
+  <thead>
+    <tr><td>
+      <div class="stamp-inner">
+        <span class="ps-name">🌿 {{ shop_name }} — Price List</span>
+        <span class="ps-right">
+          <span class="ps-legend"><span class="badge-new">✦ NEW</span> New product &nbsp; <span class="badge-upd">↑ PRICE</span> Updated</span>
+          <span class="ps-date">Generated: {{ generated }}</span>
+          <span class="ps-warn">⚠ Verify date — do not use if out of date</span>
+        </span>
+      </div>
+    </td></tr>
+  </thead>
+  <tbody><tr><td>
+    <div class="cat-title">{{ section.name }}</div>
+    <div class="cat-heading-bar">{{ section.name }}</div>
+    {% if section.products %}
+    <table class="pl-table">
+      <thead><tr><th>Product</th><th>Supplier</th><th class="r">Cost</th><th class="r">Sell</th></tr></thead>
+      <tbody>
+        {% for p in section.products %}
+        <tr>
+          <td class="pl-name">{{ p.name }}{% if p.highlight=='new' %}<span class="badge-new">✦ NEW</span>{% elif p.highlight=='updated' %}<span class="badge-upd">↑ PRICE</span>{% endif %}</td>
+          <td class="pl-sup">{{ p.supplier_name or '—' }}</td>
+          <td class="r pl-cost">{{ currency }}{{ "%.2f"|format(p.cost_price) }}</td>
+          <td class="r pl-sell">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    {% for sub in section.subs %}
+    <div class="sub-heading">↳ {{ sub.name }}</div>
+    <table class="pl-table">
+      <tbody>
+        {% for p in sub.products %}
+        <tr>
+          <td class="pl-name">{{ p.name }}{% if p.highlight=='new' %}<span class="badge-new">✦ NEW</span>{% elif p.highlight=='updated' %}<span class="badge-upd">↑ PRICE</span>{% endif %}</td>
+          <td class="pl-sup">{{ p.supplier_name or '—' }}</td>
+          <td class="r pl-cost">{{ currency }}{{ "%.2f"|format(p.cost_price) }}</td>
+          <td class="r pl-sell">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
     {% endfor %}
-  </div>
+  </td></tr></tbody>
+</table>
+{% endfor %}
 </div>
 {% endblock %}

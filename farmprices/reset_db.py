@@ -1,89 +1,163 @@
 """
-reset_db.py — Tenbury Farm Supplies Price Lookup App
-=====================================================
-Clears all products, price history, and audit log entries from the database.
-Settings (shop name, default markup, admin password) are PRESERVED.
+reset_db.py — Farm Supplies App — Database Reset
+=================================================
+Two modes:
 
-Run this script ONCE before handing the app to the client:
+  [1] DEPLOYMENT START — clears all test/client data then re-seeds categories
+      and training records. Gets you back to the state after running
+      seed_deploy.py for the first time. Use this during testing.
+
+  [2] CLIENT HANDOVER  — clears all test/client data and leaves the database
+      clean (categories and settings kept, NO products or suppliers). Use
+      this once, right before handing the device/app to the client.
+
+Always creates a timestamped backup of prices.db first.
+
+Usage:
     python reset_db.py
-
-A backup of the current database is created before any changes are made.
 """
-
-import os
-import shutil
-import sqlite3
+import os,shutil,sqlite3,sys
 from datetime import datetime
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH  = os.path.join(BASE_DIR, "prices.db")
+BASE_DIR=os.path.dirname(os.path.abspath(__file__))
+DB_PATH=os.path.join(BASE_DIR,"prices.db")
 
 
-def main():
-    if not os.path.exists(DB_PATH):
-        print("ERROR: prices.db not found. Run the app first to create it.")
-        return
+def _counts(db):
+    return {
+        "Products":      db.execute("SELECT COUNT(*) FROM products").fetchone()[0],
+        "Suppliers":     db.execute("SELECT COUNT(*) FROM suppliers").fetchone()[0],
+        "Price history": db.execute("SELECT COUNT(*) FROM price_history").fetchone()[0],
+        "Audit log":     db.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0],
+        "Categories":    db.execute("SELECT COUNT(*) FROM categories").fetchone()[0],
+    }
 
-    print()
-    print("=" * 55)
-    print("  Tenbury Farm Supplies — Database Reset")
-    print("=" * 55)
-    print()
-    print("This will DELETE:")
-    print("  • All products (including deleted ones)")
-    print("  • All price history")
-    print("  • All audit log entries")
-    print()
-    print("This will KEEP:")
-    print("  • Shop name setting")
-    print("  • Default markup setting")
-    print("  • Admin password")
-    print("  • Categories and units")
-    print()
 
-    # Show current counts
-    db = sqlite3.connect(DB_PATH)
-    products_count = db.execute("SELECT COUNT(*) FROM products").fetchone()[0]
-    history_count  = db.execute("SELECT COUNT(*) FROM price_history").fetchone()[0]
-    audit_count    = db.execute("SELECT COUNT(*) FROM audit_log").fetchone()[0]
-    db.close()
+def _wipe(db):
+    for t in ("products","suppliers","price_history","audit_log"):
+        db.execute(f"DELETE FROM {t}")
+    db.execute(
+        "DELETE FROM sqlite_sequence WHERE name IN "
+        "('products','suppliers','price_history','audit_log')"
+    )
 
-    print(f"Current data:")
-    print(f"  Products:      {products_count}")
-    print(f"  Price history: {history_count}")
-    print(f"  Audit log:     {audit_count}")
-    print()
 
-    confirm = input("Type 'RESET' to confirm and proceed: ").strip()
-    if confirm != "RESET":
-        print("Cancelled — no changes made.")
-        return
+def _backup():
+    ts=datetime.now().strftime("%Y%m%d_%H%M%S")
+    dst=os.path.join(BASE_DIR,f"prices_backup_{ts}.db")
+    shutil.copy2(DB_PATH,dst)
+    return os.path.basename(dst)
 
-    # Create a backup first
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_path = os.path.join(BASE_DIR, f"prices_backup_{timestamp}.db")
-    shutil.copy2(DB_PATH, backup_path)
-    print(f"\nBackup created: {os.path.basename(backup_path)}")
 
-    # Wipe the data
-    db = sqlite3.connect(DB_PATH)
-    db.execute("DELETE FROM products")
-    db.execute("DELETE FROM price_history")
-    db.execute("DELETE FROM audit_log")
-    db.execute("DELETE FROM sqlite_sequence WHERE name IN ('products', 'price_history', 'audit_log')")
+def reset_to_deployment_start():
+    """Wipe everything then re-seed categories and training data."""
+    try:
+        import seed_deploy as sd
+    except ImportError:
+        print("ERROR: seed_deploy.py not found alongside reset_db.py")
+        sys.exit(1)
+
+    db=sqlite3.connect(DB_PATH)
+    db.row_factory=sqlite3.Row
+    db.execute("PRAGMA foreign_keys=ON")
+
+    bk=_backup()
+    print(f"\n  Backup created: {bk}")
+
+    _wipe(db)
+    # Also wipe and re-seed categories so any test categories are gone
+    db.execute("DELETE FROM categories")
+    db.execute("DELETE FROM sqlite_sequence WHERE name='categories'")
+    # Re-seed default units (in case they were cleared)
+    for u in ["each","bag","kg","litre","roll","box","metre","pair","set","pack"]:
+        db.execute("INSERT OR IGNORE INTO units (name) VALUES (?)",(u,))
+
+    db.commit()
+
+    # Re-seed categories via seed_deploy
+    added_p,added_s=sd.seed_categories(db)
+    # Re-seed training data
+    sd.seed_training(db)
     db.commit()
     db.close()
 
     print()
-    print("✓ All products, price history, and audit log cleared.")
-    print("✓ Settings, categories, and units preserved.")
+    print("  ✓ All products, suppliers, price history and audit log cleared.")
+    print(f"  ✓ {added_p} parent categories + {added_s} subcategories restored.")
+    print("  ✓ Training supplier and products restored.")
     print()
-    print("The app is ready for the client to add their products.")
-    print()
-    print(f"Backup saved as: {os.path.basename(backup_path)}")
-    print("(You can delete this backup file once you're happy with the reset.)")
+    print("  You are back at deployment start. Ready for another test run.")
     print()
 
 
-if __name__ == "__main__":
+def reset_to_client_handover():
+    """Wipe products/suppliers/history/audit. Leave categories, settings, users."""
+    db=sqlite3.connect(DB_PATH)
+    db.execute("PRAGMA foreign_keys=ON")
+
+    bk=_backup()
+    print(f"\n  Backup created: {bk}")
+
+    _wipe(db)
+    db.commit()
+    db.close()
+
+    print()
+    print("  ✓ Products, suppliers, price history and audit log cleared.")
+    print("  ✓ Settings, categories, units and users preserved.")
+    print()
+    print("  The app is clean and ready for the client to add their products.")
+    print(f"  (Backup: {bk} — delete once you are happy.)")
+    print()
+
+
+def main():
+    if not os.path.exists(DB_PATH):
+        print("\nERROR: prices.db not found. Start the app first to create it.\n")
+        return
+
+    db=sqlite3.connect(DB_PATH)
+    counts=_counts(db)
+    db.close()
+
+    print()
+    print("═"*58)
+    print("  Farm Supplies App — Database Reset")
+    print("═"*58)
+    print()
+    print("  Current database:")
+    for label,n in counts.items():
+        print(f"    {label+':':<16} {n}")
+    print()
+    print("  Choose reset mode:")
+    print()
+    print("  [1] Deployment start — clear everything and restore")
+    print("      categories + training data (back to post-seed_deploy")
+    print("      state). Use this during development / testing.")
+    print()
+    print("  [2] Client handover  — clear products, suppliers,")
+    print("      history and audit log. Categories and settings kept.")
+    print("      Use this once before handing to the client.")
+    print()
+    print("  [0] Cancel")
+    print()
+
+    choice=input("  Enter choice [0/1/2]: ").strip()
+    if choice not in ("1","2"):
+        print("\n  Cancelled — no changes made.\n")
+        return
+
+    mode_label="Deployment start" if choice=="1" else "Client handover"
+    confirm=input(f"\n  Type 'RESET' to confirm {mode_label} reset: ").strip()
+    if confirm!="RESET":
+        print("\n  Cancelled — no changes made.\n")
+        return
+
+    if choice=="1":
+        reset_to_deployment_start()
+    else:
+        reset_to_client_handover()
+
+
+if __name__=="__main__":
     main()

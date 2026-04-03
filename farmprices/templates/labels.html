@@ -7,30 +7,37 @@
 {% endblock %}
 {% block head %}
 <style>
-/* ── toolbar ── */
 .ltoolbar{background:#f8f8f8;border:1px solid #e0e0e0;border-radius:6px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;}
 .ltoolbar select,.ltoolbar button{font-size:.8rem;padding:4px 8px;border:1px solid #aaa;border-radius:3px;background:#fff;cursor:pointer;}
 .ltoolbar label{font-size:.78rem;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;}
 .ltoolbar .sep{width:1px;background:#ccc;height:24px;}
-.ltoolbar input[type=range]{width:90px;cursor:pointer;}
-#sz-val{font-size:.78rem;font-weight:700;min-width:28px;text-align:center;}
+.ltoolbar input[type=range]{width:72px;cursor:pointer;}
+.sz-val{font-size:.75rem;font-weight:700;min-width:26px;text-align:center;}
+.font-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.font-ctrl{display:flex;align-items:center;gap:3px;background:#fff;border:1px solid #ddd;border-radius:4px;padding:3px 6px;}
+.font-ctrl span.lbl{font-size:.7rem;color:#555;white-space:nowrap;min-width:52px;}
+.preset-bar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.preset-bar select{min-width:110px;}
+.preset-bar input[type=text]{font-size:.8rem;padding:4px 7px;border:1px solid #aaa;border-radius:3px;width:110px;}
+.btn-xs{font-size:.75rem!important;padding:3px 8px!important;}
+.ltoolbar .btn-save{background:#1b5e20!important;color:#fff!important;border-color:#1b5e20!important;}
+.ltoolbar .btn-save:hover{background:#145016!important;}
+.ltoolbar .btn-del{background:#b71c1c!important;color:#fff!important;border-color:#b71c1c!important;}
+.ltoolbar .btn-del:hover{background:#8b0000!important;}
 
-/* ── screen grid ── */
 .labels-grid{display:grid;grid-template-columns:repeat(3,70mm);gap:2mm;padding:2mm;background:#f5f5f5;}
-
-/* ── card ── */
-.label-card{width:70mm;height:49.5mm;font-size:14pt;border:1px solid #333;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;}
+.label-card{width:70mm;height:49.5mm;border:1px solid #333;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;}
 .label-top{border-bottom:2px solid #000;padding:.15em .3em .12em;flex-shrink:0;}
-.label-name{font-size:1.15em;font-weight:900;line-height:1.2;color:#000;text-transform:uppercase;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
-.label-cat{font-size:.72em;color:#444;margin-top:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.label-name{font-weight:900;line-height:1.2;color:#000;text-transform:uppercase;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.label-cat{color:#444;margin-top:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .label-price-wrap{padding:.2em .3em .15em;flex-shrink:0;}
-.label-price{font-size:2.5em;font-weight:900;line-height:1;color:#000;}
-.label-unit{font-size:.78em;color:#333;display:block;margin-top:.1em;font-weight:600;}
-.label-per100{font-size:.78em;color:#222;font-weight:700;padding:.1em .3em;border-top:1px dashed #aaa;flex-shrink:0;}
-.label-supplier{font-size:.68em;color:#444;padding:.1em .3em 0;flex-shrink:0;}
+.label-price{font-weight:900;line-height:1;color:#000;}
+.label-unit{color:#333;display:block;margin-top:.1em;font-weight:600;}
+.label-per100{color:#222;font-weight:700;padding:.1em .3em;border-top:1px dashed #aaa;flex-shrink:0;}
+.label-supplier{color:#444;padding:.1em .3em 0;flex-shrink:0;}
 .label-footer{border-top:1px solid #ccc;padding:.15em .3em;margin-top:auto;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
-.label-shop{font-size:.68em;color:#333;font-weight:700;}
-.label-date{font-size:.62em;color:#666;}
+.label-shop{color:#333;font-weight:700;}
+.label-date{color:#666;}
 .h-cat .label-cat{display:none;}
 .h-supplier .label-supplier{display:none;}
 .h-per100 .label-per100{display:none;}
@@ -48,6 +55,7 @@
 {% endblock %}
 {% block content %}
 <div class="ltoolbar no-print">
+  <!-- Filter row -->
   <form method="GET" id="filterForm" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
     <select name="category" onchange="document.getElementById('filterForm').submit()">
       <option value="">All Categories</option>
@@ -68,16 +76,64 @@
     {% endif %}
   </form>
   <div class="sep"></div>
-  <label style="gap:6px;">
-    <span style="font-size:.75rem;font-weight:700;">Font:</span>
-    <input type="range" id="szSlider" min="6" max="16" value="14" step="0.5" oninput="setFontSize(this.value)">
-    <span id="sz-val">14pt</span>
-  </label>
+  <!-- Preset bar -->
+  <div class="preset-bar">
+    <select id="presetSelect" onchange="loadPreset(this.value)">
+      <option value="">— Load style —</option>
+    </select>
+    <input type="text" id="presetName" placeholder="Style name…">
+    <button class="btn btn-xs btn-save" onclick="savePreset()">💾 Save</button>
+    <button class="btn btn-xs btn-del" onclick="deletePreset()">🗑 Delete</button>
+  </div>
   <div class="sep"></div>
-  <label><input type="checkbox" id="tog-cat" checked onchange="tog('h-cat')"> Category</label>
-  <label><input type="checkbox" id="tog-sup" onchange="tog('h-supplier')"> Supplier</label>
-  <label><input type="checkbox" id="tog-100" checked onchange="tog('h-per100')"> Price/100</label>
-  <label><input type="checkbox" id="tog-shop" checked onchange="tog('h-shop')"> Shop name</label>
+  <!-- Font size sliders -->
+  <div class="font-row">
+    <div class="font-ctrl">
+      <span class="lbl">Product name</span>
+      <input type="range" id="sl-label-name" min="6" max="24" value="16" step="0.5" oninput="setSz('label-name',this.value);autoSave()">
+      <span class="sz-val" id="v-name">16pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Category</span>
+      <input type="range" id="sl-label-cat" min="4" max="16" value="10" step="0.5" oninput="setSz('label-cat',this.value);autoSave()">
+      <span class="sz-val" id="v-cat">10pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Price</span>
+      <input type="range" id="sl-label-price" min="10" max="70" value="35" step="0.5" oninput="setSz('label-price',this.value);autoSave()">
+      <span class="sz-val" id="v-price">35pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Unit</span>
+      <input type="range" id="sl-label-unit" min="4" max="16" value="11" step="0.5" oninput="setSz('label-unit',this.value);autoSave()">
+      <span class="sz-val" id="v-unit">11pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Price/100</span>
+      <input type="range" id="sl-label-per100" min="4" max="16" value="11" step="0.5" oninput="setSz('label-per100',this.value);autoSave()">
+      <span class="sz-val" id="v-per100">11pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Supplier</span>
+      <input type="range" id="sl-label-supplier" min="4" max="14" value="9" step="0.5" oninput="setSz('label-supplier',this.value);autoSave()">
+      <span class="sz-val" id="v-sup">9pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Shop name</span>
+      <input type="range" id="sl-label-shop" min="4" max="14" value="9" step="0.5" oninput="setSz('label-shop',this.value);autoSave()">
+      <span class="sz-val" id="v-shop">9pt</span>
+    </div>
+    <div class="font-ctrl">
+      <span class="lbl">Date</span>
+      <input type="range" id="sl-label-date" min="4" max="12" value="8" step="0.5" oninput="setSz('label-date',this.value);autoSave()">
+      <span class="sz-val" id="v-date">8pt</span>
+    </div>
+  </div>
+  <div class="sep"></div>
+  <label><input type="checkbox" id="tog-cat" checked onchange="tog('h-cat');autoSave()"> Category</label>
+  <label><input type="checkbox" id="tog-sup" onchange="tog('h-supplier');autoSave()"> Supplier</label>
+  <label><input type="checkbox" id="tog-100" checked onchange="tog('h-per100');autoSave()"> Price/100</label>
+  <label><input type="checkbox" id="tog-shop" checked onchange="tog('h-shop');autoSave()"> Shop name</label>
 </div>
 
 <div class="labels-grid" id="grid">
@@ -108,9 +164,126 @@
 {% block scripts %}
 <script>
 var grid=document.getElementById('grid');
-function setFontSize(v){var cards=grid.querySelectorAll('.label-card');for(var i=0;i<cards.length;i++)cards[i].style.fontSize=v+'pt';document.getElementById('sz-val').textContent=v+'pt';}
-function tog(cls){grid.classList.toggle(cls);}
-grid.classList.add('h-supplier');
-document.getElementById('tog-sup').checked=false;
+var SL_KEY='labelStyles';
+var AUTO_KEY='labelStyleAuto';
+
+var SLIDERS=[
+  {cls:'label-name',  vid:'v-name'},
+  {cls:'label-cat',   vid:'v-cat'},
+  {cls:'label-price', vid:'v-price'},
+  {cls:'label-unit',  vid:'v-unit'},
+  {cls:'label-per100',vid:'v-per100'},
+  {cls:'label-supplier',vid:'v-sup'},
+  {cls:'label-shop',  vid:'v-shop'},
+  {cls:'label-date',  vid:'v-date'}
+];
+var TOGGS=[
+  {id:'tog-cat', cls:'h-cat'},
+  {id:'tog-sup', cls:'h-supplier'},
+  {id:'tog-100', cls:'h-per100'},
+  {id:'tog-shop',cls:'h-shop'}
+];
+
+function setSz(cls,v){
+  var els=grid.querySelectorAll('.'+cls);
+  for(var i=0;i<els.length;i++)els[i].style.fontSize=parseFloat(v)+'pt';
+  var s=SLIDERS.find(function(x){return x.cls===cls;});
+  if(s)document.getElementById(s.vid).textContent=parseFloat(v).toFixed(1)+'pt';
+  var sl=document.getElementById('sl-'+cls);
+  if(sl)sl.value=v;
+}
+function tog(cls,state){
+  if(state===undefined)grid.classList.toggle(cls);
+  else if(state)grid.classList.add(cls);
+  else grid.classList.remove(cls);
+}
+
+function getState(){
+  var state={fonts:{},toggs:{}};
+  SLIDERS.forEach(function(s){state.fonts[s.cls]=document.getElementById('sl-'+s.cls).value;});
+  TOGGS.forEach(function(t){state.toggs[t.cls]=!document.getElementById(t.id).checked;});
+  return state;
+}
+function applyState(state){
+  if(!state)return;
+  if(state.fonts)Object.keys(state.fonts).forEach(function(cls){setSz(cls,state.fonts[cls]);});
+  if(state.toggs)TOGGS.forEach(function(t){
+    var hide=!!state.toggs[t.cls];
+    document.getElementById(t.id).checked=!hide;
+    tog(t.cls,hide);
+  });
+}
+function autoSave(){
+  try{localStorage.setItem(AUTO_KEY,JSON.stringify(getState()));}catch(e){}
+}
+function getStyles(){
+  try{return JSON.parse(localStorage.getItem(SL_KEY)||'{}');}catch(e){return {};}
+}
+function saveStyles(s){
+  try{localStorage.setItem(SL_KEY,JSON.stringify(s));}catch(e){}
+}
+function refreshSelect(){
+  var sel=document.getElementById('presetSelect');
+  var cur=sel.value;
+  var styles=getStyles();
+  sel.innerHTML='<option value="">— Load style —</option>';
+  Object.keys(styles).sort().forEach(function(n){
+    var o=document.createElement('option');
+    o.value=n;o.textContent=n;
+    if(n===cur)o.selected=true;
+    sel.appendChild(o);
+  });
+}
+function savePreset(){
+  var name=document.getElementById('presetName').value.trim();
+  if(!name){alert('Enter a style name first.');return;}
+  var styles=getStyles();
+  styles[name]=getState();
+  saveStyles(styles);
+  refreshSelect();
+  document.getElementById('presetSelect').value=name;
+  document.getElementById('presetName').value='';
+}
+function loadPreset(name){
+  if(!name)return;
+  var styles=getStyles();
+  if(styles[name])applyState(styles[name]);
+  document.getElementById('presetName').value=name;
+}
+function deletePreset(){
+  var sel=document.getElementById('presetSelect');
+  var name=sel.value||document.getElementById('presetName').value.trim();
+  if(!name)return;
+  var styles=getStyles();
+  if(!styles[name]){alert('Style "'+name+'" not found.');return;}
+  if(!confirm('Delete style "'+name+'"?'))return;
+  delete styles[name];
+  saveStyles(styles);
+  document.getElementById('presetName').value='';
+  refreshSelect();
+}
+
+// Init: load first saved style if any, else auto-saved state, else defaults
+(function(){
+  var styles=getStyles();
+  var names=Object.keys(styles).sort();
+  if(names.length>0){
+    applyState(styles[names[0]]);
+    refreshSelect();
+    document.getElementById('presetSelect').value=names[0];
+    document.getElementById('presetName').value=names[0];
+  } else {
+    var auto=null;
+    try{auto=JSON.parse(localStorage.getItem(AUTO_KEY));}catch(e){}
+    if(auto){
+      applyState(auto);
+    } else {
+      SLIDERS.forEach(function(s){setSz(s.cls,document.getElementById('sl-'+s.cls).value);});
+      tog('h-supplier',true);
+      document.getElementById('tog-sup').checked=false;
+    }
+    refreshSelect();
+  }
+})();
 </script>
 {% endblock %}

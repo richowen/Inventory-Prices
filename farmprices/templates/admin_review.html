@@ -54,7 +54,6 @@
   </thead>
   <tbody>
     {% for p in products %}
-    {% set days_old = ((now_date - p.last_updated)|int) if p.last_updated else 999 %}
     <tr>
       <td>
         <strong>{{ p.name }}</strong>
@@ -68,10 +67,9 @@
         {{ p.last_updated or 'Never set' }}
       </td>
       <td>
-        {% if p.last_updated %}
-          {% set age = (("now"|strftime('%Y-%m-%d')) - p.last_updated) %}
-          <span style="font-weight:700;color:{% if p.last_updated < (days|string + ' days ago') %}var(--red){% else %}#888{% endif %}">
-            {{ p.last_updated }}
+        {% if p.days_old is defined %}
+          <span style="font-weight:700;color:{% if p.days_old > days %}var(--red){% else %}#888{% endif %}">
+            {{ p.days_old }} day{{ 's' if p.days_old != 1 else '' }}
           </span>
         {% else %}
           <span style="color:var(--red)">?</span>

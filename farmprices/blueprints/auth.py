@@ -53,6 +53,14 @@ def login():
                 return redirect(url_for("admin.products"))
             return redirect(url_for("public.index"))
         else:
+            try:
+                db = get_db()
+                log_event(db, "login_failed",
+                          changed_by=username,
+                          notes=f"Failed login attempt for '{username}'")
+                db.commit()
+            except Exception:
+                pass
             flash("Incorrect username or password.", "error")
 
     return render_template("login.html",

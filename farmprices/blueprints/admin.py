@@ -19,7 +19,7 @@ from decorators import require_admin
 from helpers import (
     cat_tree as _cat_tree_shared,
     get_pricing_config, get_setting, log_event,
-    product_snapshot, sell_price
+    product_snapshot, sell_price, smart_title
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -156,10 +156,10 @@ def add_product():
     tree       = _cat_tree(db)
 
     if request.method == "POST":
-        name     = request.form.get("name", "").strip()[:_MAX_NAME]
+        name     = smart_title(request.form.get("name", "").strip())[:_MAX_NAME]
         category = request.form.get("category", "").strip()
         unit     = request.form.get("unit", "").strip()
-        supplier = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
+        supplier = smart_title(request.form.get("supplier_name", "").strip())[:_MAX_NAME]
         notes    = request.form.get("notes", "").strip()[:_MAX_NOTES]
         # Auto-fill tel from suppliers table
         tel = ""
@@ -274,10 +274,10 @@ def edit_product(pid):
     tree       = _cat_tree(db)
 
     if request.method == "POST":
-        name        = request.form.get("name", "").strip()[:_MAX_NAME]
+        name        = smart_title(request.form.get("name", "").strip())[:_MAX_NAME]
         category    = request.form.get("category", "").strip()
         unit        = request.form.get("unit", "").strip()
-        supplier    = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
+        supplier    = smart_title(request.form.get("supplier_name", "").strip())[:_MAX_NAME]
         notes       = request.form.get("notes", "").strip()[:_MAX_NOTES]
         change_note = request.form.get("change_note", "").strip()[:_MAX_NOTES]
         barcode     = request.form.get("barcode", "").strip()[:_MAX_BARCODE]

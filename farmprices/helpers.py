@@ -8,6 +8,36 @@ from datetime import datetime
 from db import get_db
 
 
+# ── Text sanitisation ─────────────────────────────────────────────────────────
+
+_LOWER_WORDS = {'or','of','the','in','on','at','for','to','a','an','per','with','by','from','&'}
+
+def smart_title(s: str) -> str:
+    """Title-case a product/supplier name with smart rules:
+    - Preserves ALL-CAPS abbreviations (NPK, IBC, VAT)
+    - Connector words lowercase unless first (of, per, with, etc.)
+    - Words starting with a digit kept lowercase (25kg, 500ml)
+    - Standalone 'and' replaced with '&'
+    """
+    import re
+    s = re.sub(r'\s+',' ',s.strip())
+    words = s.split()
+    result = []
+    for i, word in enumerate(words):
+        lw = word.lower()
+        if lw in ('and','&'):
+            result.append('&')
+        elif word.isupper() and len(word) > 1:
+            result.append(word)
+        elif i > 0 and lw in _LOWER_WORDS:
+            result.append(lw)
+        elif word[0].isdigit():
+            result.append(word.lower())
+        else:
+            result.append(word.capitalize())
+    return ' '.join(result)
+
+
 # ── Price calculations ────────────────────────────────────────────────────────
 
 def apply_rounding(price: float, mode: str) -> float:

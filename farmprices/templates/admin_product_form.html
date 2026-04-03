@@ -196,5 +196,21 @@ function updatePreview(){
   else preview.style.display='none';
 }
 costInput.addEventListener('input',updatePreview);markupInput.addEventListener('input',updatePreview);updatePreview();
+
+const _LOWER=['or','of','the','in','on','at','for','to','a','an','per','with','by','from'];
+function smartTitle(s){
+  return s.trim().replace(/\s+/g,' ').split(' ').map((w,i)=>{
+    const lw=w.toLowerCase();
+    if(/^(and|&)$/i.test(w))return '&';
+    if(w===w.toUpperCase()&&w.length>1)return w;
+    if(i>0&&_LOWER.includes(lw))return lw;
+    if(/^\d/.test(w))return w.toLowerCase();
+    return w.charAt(0).toUpperCase()+w.slice(1).toLowerCase();
+  }).join(' ');
+}
+['name','supplier_name'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('blur',()=>{if(el.value.trim())el.value=smartTitle(el.value);});
+});
 </script>
 {% endblock %}

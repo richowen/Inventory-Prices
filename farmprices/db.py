@@ -69,6 +69,8 @@ CREATE TABLE IF NOT EXISTS products (
     barcode           TEXT    NOT NULL DEFAULT '',
     quantity          REAL,
     reorder_threshold REAL,
+    weight_kg         REAL,
+    volume_litres     REAL,
     last_updated      TEXT    NOT NULL DEFAULT (date('now')),
     active            INTEGER NOT NULL DEFAULT 1
 );
@@ -149,6 +151,8 @@ def init_db(app=None):
         ("barcode",           "TEXT    NOT NULL DEFAULT ''"),
         ("quantity",          "REAL"),
         ("reorder_threshold", "REAL"),
+        ("weight_kg",         "REAL"),
+        ("volume_litres",     "REAL"),
     ]:
         if col not in existing_cols:
             db.execute(f"ALTER TABLE products ADD COLUMN {col} {definition}")

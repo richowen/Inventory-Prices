@@ -28,7 +28,7 @@ def search():
     default_markup, rounding = get_pricing_config()
 
     query  = """SELECT id, name, category, unit, cost_price, markup_pct,
-                       last_updated, barcode, quantity, reorder_threshold
+                       last_updated, barcode, quantity, reorder_threshold, weight_kg, volume_litres
                 FROM products WHERE active=1"""
     params = []
 
@@ -74,6 +74,8 @@ def search():
             "name":             r["name"],
             "category":         r["category"],
             "unit":             r["unit"],
+            "weight_kg":        r["weight_kg"],
+            "volume_litres":    r["volume_litres"],
             "sell_price":       sp,
             "last_updated":     r["last_updated"],
             "recently_updated": recently_updated,

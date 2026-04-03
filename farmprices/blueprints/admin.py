@@ -202,15 +202,23 @@ def add_product():
             reorder = float(request.form.get("reorder_threshold","").strip()) if request.form.get("reorder_threshold","").strip() else None
         except (TypeError, ValueError):
             reorder = None
+        try:
+            weight_kg = float(request.form.get("weight_kg","").strip()) if request.form.get("weight_kg","").strip() else None
+        except (TypeError, ValueError):
+            weight_kg = None
+        try:
+            volume_litres = float(request.form.get("volume_litres","").strip()) if request.form.get("volume_litres","").strip() else None
+        except (TypeError, ValueError):
+            volume_litres = None
 
         cursor = db.execute(
             """INSERT INTO products
                (name, category, unit, supplier_name, supplier_tel,
                 cost_price, markup_pct, notes, barcode,
-                quantity, reorder_threshold, last_updated)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+                quantity, reorder_threshold, weight_kg, volume_litres, last_updated)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (name, category, unit, supplier, tel, cost, markup, notes,
-             "", qty, reorder, date.today().isoformat())
+             "", qty, reorder, weight_kg, volume_litres, date.today().isoformat())
         )
         new_id = cursor.lastrowid
         log_event(db, "product_added", product_id=new_id, product_name=name,
@@ -313,6 +321,14 @@ def edit_product(pid):
             reorder = float(request.form.get("reorder_threshold","").strip()) if request.form.get("reorder_threshold","").strip() else None
         except (TypeError, ValueError):
             reorder = None
+        try:
+            weight_kg = float(request.form.get("weight_kg","").strip()) if request.form.get("weight_kg","").strip() else None
+        except (TypeError, ValueError):
+            weight_kg = None
+        try:
+            volume_litres = float(request.form.get("volume_litres","").strip()) if request.form.get("volume_litres","").strip() else None
+        except (TypeError, ValueError):
+            volume_litres = None
 
         old_snap = product_snapshot(product)
         new_snap = {"name": name, "category": category, "unit": unit,
@@ -342,9 +358,9 @@ def edit_product(pid):
             """UPDATE products SET
                name=?, category=?, unit=?, supplier_name=?, supplier_tel=?,
                cost_price=?, markup_pct=?, notes=?, barcode=?,
-               quantity=?, reorder_threshold=?, last_updated=? WHERE id=?""",
+               quantity=?, reorder_threshold=?, weight_kg=?, volume_litres=?, last_updated=? WHERE id=?""",
             (name, category, unit, supplier, tel, new_cost, markup, notes,
-             barcode, qty, reorder, date.today().isoformat(), pid)
+             barcode, qty, reorder, weight_kg, volume_litres, date.today().isoformat(), pid)
         )
         new_supplier = _auto_save_supplier(db, supplier, tel)
         db.commit()

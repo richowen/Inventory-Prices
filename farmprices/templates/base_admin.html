@@ -51,8 +51,13 @@
       <a href="{{ url_for('public.index') }}" target="_blank">
         <span class="nav-icon">🔍</span> Price Lookup
       </a>
-      <a href="{{ url_for('public.labels') }}" target="_blank">
+      <a href="{{ url_for('public.labels') }}"
+         class="{% if active_nav == 'labels' %}active{% endif %}">
         <span class="nav-icon">🏷</span> Shelf Labels
+      </a>
+      <a href="{{ url_for('public.pricelist') }}"
+         class="{% if active_nav == 'pricelist' %}active{% endif %}">
+        <span class="nav-icon">🖨</span> Price List
       </a>
     </nav>
     <div class="sidebar-footer">

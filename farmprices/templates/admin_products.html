@@ -113,7 +113,7 @@
         {% if p.notes %}<br><small style="color:#aaa">{{ p.notes }}</small>{% endif %}
       </td>
       <td class="col-cat"><span class="category-badge">{{ p.category }}</span></td>
-      <td class="col-unit" style="color:#888">{{ p.unit }}</td>
+      <td class="col-unit" style="color:#888">{{ p.unit }}{% if p.weight_kg %}<br><small style="color:#bbb">{{ p.weight_kg|int if p.weight_kg == p.weight_kg|int else p.weight_kg }}kg</small>{% endif %}</td>
       <td class="col-supplier">
         <div class="supplier-name">{{ p.supplier_name or '—' }}</div>
         {% if p.supplier_tel %}<div class="supplier-tel">{{ p.supplier_tel }}</div>{% endif %}

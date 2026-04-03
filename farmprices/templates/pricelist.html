@@ -1,80 +1,79 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Price List — {{ shop_name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    body { background: white; }
-    .pricelist-header { background:var(--green-dark); color:white; padding:24px 32px; display:flex; align-items:center; justify-content:space-between; }
-    .pricelist-header h1 { font-size:1.6rem; }
-    .pricelist-header .sub { font-size:.9rem; opacity:.8; margin-top:4px; }
-    .no-print { background:var(--amber-pale); border-bottom:2px solid var(--amber); padding:12px 32px; display:flex; align-items:center; gap:16px; font-size:.9rem; }
-    .pricelist-body { max-width:1100px; margin:0 auto; padding:24px 32px; }
-    .category-section { margin-bottom:32px; }
-    .category-heading { font-size:1.1rem; font-weight:700; color:var(--green-dark); border-bottom:2px solid var(--green-light); padding-bottom:6px; margin-bottom:12px; }
-    .pl-table { width:100%; border-collapse:collapse; }
-    .pl-table th { background:var(--green-pale); color:var(--green-dark); padding:8px 12px; text-align:left; font-size:.82rem; font-weight:700; border-bottom:1px solid var(--green-border); }
-    .pl-table td { padding:8px 12px; border-bottom:1px solid var(--grey-mid); font-size:.9rem; }
-    .pl-table tr:last-child td { border-bottom:none; }
-    .pl-table tr:nth-child(even) td { background:var(--grey-light); }
-    .pl-sell { font-weight:700; color:var(--green-dark); font-size:1rem; }
-    .pl-cost { color:var(--text-light); font-size:.82rem; }
-    .pricelist-footer { text-align:center; color:var(--text-light); font-size:.8rem; padding:20px; border-top:1px solid var(--grey-mid); margin-top:20px; }
-    @media print {
-      .no-print { display:none !important; }
-      .pricelist-header { background:#1b5e20 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      .category-heading { color:#1b5e20 !important; }
-      .pl-table th { background:#e8f5e9 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      .pl-table tr:nth-child(even) td { background:#fafafa !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-      body { font-size:11pt; }
-      .category-section { page-break-inside:avoid; }
-    }
-    @media (max-width:600px) {
-      .pricelist-header { padding:16px; }
-      .pricelist-body { padding:16px; }
-      .no-print { padding:12px 16px; flex-direction:column; align-items:flex-start; gap:8px; }
-    }
-  </style>
-</head>
-<body>
-  <div class="no-print">
-    <span>🖨 This page is optimised for printing.</span>
-    <button onclick="window.print()" class="btn btn-primary btn-sm">Print / Save as PDF</button>
-    <a href="{{ url_for('public.index') }}" class="btn btn-secondary btn-sm">← Back to Lookup</a>
+{% extends "base_admin.html" %}
+{% block title %}Price List{% endblock %}
+{% block page_title %}🖨 Price List{% endblock %}
+{% block topbar_actions %}
+  <span style="font-size:.82rem;color:#888;">Generated {{ generated }}</span>
+  <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print / Save PDF</button>
+{% endblock %}
+{% block head %}
+<style>
+/* override admin content padding for full-width use */
+.admin-content{padding:12px 14px!important;}
+.pl-body{padding:4px 0 16px;}
+.print-stamp{display:none;}
+.pl-cols{column-count:2;column-gap:12px;}
+.cat-block{break-inside:avoid;margin-bottom:12px;}
+.cat-heading{background:#d4edda;color:#1b5e20;font-size:.76rem;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 7px;margin:0 0 2px;}
+.pl-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.pl-table th{background:#f1f8f1;color:#2e5d34;padding:3px 6px;text-align:left;font-size:.73rem;font-weight:700;border-bottom:1px solid #c8e6c9;}
+.pl-table th.r,.pl-table td.r{text-align:right;}
+.pl-table td{padding:3px 6px;border-bottom:1px solid #f0f0f0;line-height:1.35;}
+.pl-table tr:last-child td{border-bottom:none;}
+.pl-table tr:nth-child(even) td{background:#fafff9;}
+.pl-name{font-weight:700;font-size:.92rem;}
+.pl-sup{color:#888;font-size:.75rem;}
+.pl-cost{color:#555;font-size:.84rem;font-weight:600;}
+.pl-sell{font-weight:900;color:#1b5e20;font-size:1rem;}
+@media print{
+  @page{size:A4 portrait;margin:12mm;}
+  .admin-content{padding:0!important;}
+  .print-stamp{
+    display:flex!important;justify-content:space-between;align-items:center;
+    background:#1b5e20!important;color:#fff;
+    padding:4pt 8pt;margin-bottom:8pt;font-size:8pt;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .print-stamp .ps-name{font-weight:800;font-size:9pt;}
+  .print-stamp .ps-right{display:flex;gap:10pt;align-items:center;}
+  .print-stamp .ps-date{opacity:.9;}
+  .print-stamp .ps-warn{background:rgba(255,255,255,.2);padding:1pt 5pt;border-radius:2pt;font-size:7.5pt;}
+  .pl-body{padding:0;}
+  .pl-cols{column-count:2;column-gap:8mm;}
+  .cat-block{break-inside:avoid;margin-bottom:7pt;}
+  .cat-heading{background:#d4edda!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:7pt;padding:2pt 4pt;}
+  .pl-table{font-size:8pt;}
+  .pl-table th{background:#e8f5e9!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-size:7pt;padding:1pt 4pt;}
+  .pl-table td{padding:1pt 4pt;}
+  .pl-table tr:nth-child(even) td{background:#f8fff8!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .pl-sell{color:#1b5e20!important;font-size:9.5pt!important;font-weight:900!important;}
+  .pl-cost{color:#444!important;font-size:8.5pt!important;font-weight:600!important;}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="pl-body">
+  <div class="print-stamp">
+    <span class="ps-name">🌿 {{ shop_name }} — Price List</span>
+    <span class="ps-right">
+      <span class="ps-date">Generated: {{ generated }}</span>
+      <span class="ps-warn">⚠ Verify date — do not use if out of date</span>
+    </span>
   </div>
-  <div class="pricelist-header">
-    <div>
-      <h1>🌿 {{ shop_name }}</h1>
-      <div class="sub">Current Price List — Generated {{ generated }}</div>
-    </div>
-  </div>
-  <div class="pricelist-body">
+  <div class="pl-cols">
     {% for category, items in by_category.items() %}
-    <div class="category-section">
-      <div class="category-heading">{{ category }}</div>
+    <div class="cat-block">
+      <div class="cat-heading">{{ category }}</div>
       <table class="pl-table">
-        <thead>
-          <tr>
-            <th>Product</th>
-            <th>Unit</th>
-            <th>Sell Price</th>
-            {% if is_admin %}<th>Cost Price</th>{% endif %}
-            <th>Last Updated</th>
-          </tr>
-        </thead>
+        <thead><tr>
+          <th>Product</th><th>Supplier</th><th class="r">Cost</th><th class="r">Sell</th>
+        </tr></thead>
         <tbody>
           {% for p in items %}
           <tr>
-            <td>
-              <strong>{{ p.name }}</strong>
-              {% if p.notes %}<br><small style="color:#aaa">{{ p.notes }}</small>{% endif %}
-            </td>
-            <td style="color:#888">{{ p.unit }}</td>
-            <td><span class="pl-sell">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</span></td>
-            {% if is_admin %}<td><span class="pl-cost">{{ currency }}{{ "%.2f"|format(p.cost_price) }}</span></td>{% endif %}
-            <td style="color:#aaa;font-size:.8rem">{{ p.last_updated }}</td>
+            <td class="pl-name">{{ p.name }}</td>
+            <td class="pl-sup">{{ p.supplier_name or '—' }}</td>
+            <td class="r pl-cost">{{ currency }}{{ "%.2f"|format(p.cost_price) }}</td>
+            <td class="r pl-sell">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -82,8 +81,5 @@
     </div>
     {% endfor %}
   </div>
-  <div class="pricelist-footer">
-    {{ shop_name }} · Prices correct as of {{ generated }} · All prices include VAT where applicable
-  </div>
-</body>
-</html>
+</div>
+{% endblock %}

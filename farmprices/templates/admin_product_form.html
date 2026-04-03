@@ -55,6 +55,20 @@
           {% endfor %}
         </select>
       </div>
+      <div class="form-group">
+        <label for="weight_kg">Weight (kg, optional)</label>
+        <input type="number" id="weight_kg" name="weight_kg" step="0.001" min="0"
+               value="{{ product.weight_kg if product and product.weight_kg is not none else '' }}"
+               placeholder="e.g. 25">
+        <span class="hint">Solid products — e.g. 25 for a 25kg bag</span>
+      </div>
+      <div class="form-group">
+        <label for="volume_litres">Volume (litres, optional)</label>
+        <input type="number" id="volume_litres" name="volume_litres" step="0.001" min="0"
+               value="{{ product.volume_litres if product and product.volume_litres is not none else '' }}"
+               placeholder="e.g. 5">
+        <span class="hint">Liquid products — e.g. 5 for a 5L container</span>
+      </div>
       <div class="form-group full-width">
         <label for="notes">Notes (optional)</label>
         <input type="text" id="notes" name="notes" maxlength="500"

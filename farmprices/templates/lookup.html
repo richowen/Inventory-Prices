@@ -1,275 +1,296 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{{ shop_name }} — Price Lookup</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    .lookup-page { display:flex; flex-direction:column; min-height:100vh; }
-    .search-section { position:sticky; top:0; z-index:20; box-shadow:0 2px 8px rgba(0,0,0,.15); }
-    .search-clear {
-      position:absolute; right:52px; top:50%; transform:translateY(-50%);
-      background:none; border:none; font-size:1.2rem; color:#aaa;
-      cursor:pointer; padding:4px; display:none; line-height:1;
-    }
-    .search-clear:hover { color:var(--text-dark); }
-    .search-clear.visible { display:block; }
-    .category-pills {
-      background:var(--green-mid); padding:0 32px 14px;
-      display:flex; gap:8px; overflow-x:auto;
-      -webkit-overflow-scrolling:touch; scrollbar-width:none;
-    }
-    .category-pills::-webkit-scrollbar { display:none; }
-    .sub-pills {
-      background:var(--green-dark); padding:6px 32px 10px;
-      display:flex; gap:6px; overflow-x:auto;
-      -webkit-overflow-scrolling:touch; scrollbar-width:none;
-    }
-    .sub-pills::-webkit-scrollbar { display:none; }
-    .cat-pill {
-      flex-shrink:0; padding:7px 16px; border-radius:20px;
-      border:2px solid rgba(255,255,255,.4); background:transparent;
-      color:rgba(255,255,255,.85); font-size:.88rem; font-weight:600;
-      cursor:pointer; transition:all .15s; white-space:nowrap; min-height:36px;
-    }
-    .cat-pill:hover { background:rgba(255,255,255,.15); color:white; border-color:rgba(255,255,255,.7); }
-    .cat-pill.active { background:white; color:var(--green-dark); border-color:white; }
-    .sub-pill {
-      flex-shrink:0; padding:4px 12px; border-radius:14px;
-      border:1px solid rgba(255,255,255,.3); background:transparent;
-      color:rgba(255,255,255,.75); font-size:.8rem; font-weight:500;
-      cursor:pointer; transition:all .15s; white-space:nowrap;
-    }
-    .sub-pill:hover { background:rgba(255,255,255,.15); color:white; }
-    .sub-pill.active { background:rgba(255,255,255,.25); color:white; border-color:rgba(255,255,255,.7); }
-    .result-card { border-left:4px solid var(--green-light); cursor:default; }
-    .price-block { display:flex; flex-direction:column; align-items:flex-end; min-width:160px; gap:2px; }
-    .sell-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-light); }
-    .sell-price-big { font-size:2rem; font-weight:800; color:var(--green-dark); line-height:1; }
-    .cost-price-small { font-size:.8rem; color:var(--text-light); }
-    .per-unit-small { font-size:.78rem; color:var(--text-light); }
-    .new-badge {
-      display:inline-block; background:var(--amber); color:white;
-      font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:8px;
-      vertical-align:middle; margin-left:6px; text-transform:uppercase; letter-spacing:.3px;
-    }
-    .low-stock-badge {
-      display:inline-block; background:var(--red); color:white;
-      font-size:.65rem; font-weight:700; padding:1px 6px; border-radius:8px;
-      vertical-align:middle; margin-left:4px; text-transform:uppercase;
-    }
-    @media (min-width:701px) and (max-width:1024px) {
-      .lookup-header { padding:16px 24px; }
-      .lookup-header h1 { font-size:1.4rem; }
-      .search-section { padding:20px 24px; }
-      .search-input { font-size:1.2rem; padding:16px 52px 16px 18px; }
-      .category-pills { padding:0 24px 12px; }
-      .results-section { padding:16px 24px; }
-      .result-card { padding:14px 16px; }
-      .sell-price-big { font-size:1.7rem; }
-    }
-    @media (max-width:700px) {
-      .lookup-header { padding:12px 16px; }
-      .lookup-header h1 { font-size:1.15rem; }
-      .search-section { padding:14px 16px; }
-      .search-input { font-size:1.1rem; padding:14px 80px 14px 14px; }
-      .category-pills { padding:0 16px 12px; gap:6px; }
-      .cat-pill { padding:6px 12px; font-size:.82rem; }
-      .results-section { padding:12px 16px; }
-      .result-card { flex-direction:column; align-items:stretch; gap:10px; padding:14px 16px; }
-      .price-block {
-        flex-direction:row; align-items:center; justify-content:space-between;
-        min-width:unset; border-top:1px solid var(--grey-mid); padding-top:10px;
-      }
-      .sell-price-big { font-size:1.6rem; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>{{ shop_name }} — Price Lookup</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+<style>
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;height:100%;background:#f0f2f0;font-family:Arial,Helvetica,sans-serif;}
+
+/* ── header ── */
+.lk-header{
+  background:var(--green-dark,#2e5d34);
+  color:#fff;padding:10px 16px;
+  display:flex;justify-content:space-between;align-items:center;
+  gap:8px;flex-wrap:wrap;
+}
+.lk-header h1{margin:0;font-size:1.1rem;font-weight:800;white-space:nowrap;}
+.lk-header .hlinks{display:flex;gap:8px;flex-wrap:wrap;}
+.lk-header a{color:rgba(255,255,255,.8);font-size:.78rem;text-decoration:none;padding:5px 10px;border:1px solid rgba(255,255,255,.3);border-radius:4px;}
+.lk-header a:hover{background:rgba(255,255,255,.15);}
+
+/* ── search bar ── */
+.lk-search{
+  background:var(--green-mid,#3a7042);
+  padding:12px 16px 0;position:sticky;top:0;z-index:20;
+  box-shadow:0 2px 8px rgba(0,0,0,.2);
+}
+.lk-search-wrap{position:relative;}
+.lk-search input{
+  width:100%;font-size:1.3rem;font-weight:500;
+  padding:14px 50px 14px 18px;border:none;border-radius:8px;
+  background:#fff;color:#111;outline:none;
+}
+.lk-search input::placeholder{color:#aaa;}
+.lk-search .s-clear{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  background:none;border:none;font-size:1.2rem;color:#aaa;cursor:pointer;
+  display:none;padding:4px;line-height:1;
+}
+.lk-search .s-clear.show{display:block;}
+.lk-search-hint{font-size:.75rem;color:rgba(255,255,255,.6);padding:6px 4px 10px;text-align:center;}
+
+/* ── category pills ── */
+.lk-cats{
+  background:var(--green-mid,#3a7042);
+  padding:4px 12px 12px;
+  display:flex;gap:8px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.lk-cats::-webkit-scrollbar{display:none;}
+.lk-subs{
+  background:var(--green-dark,#2e5d34);
+  padding:6px 12px 10px;
+  display:none;flex-wrap:nowrap;gap:6px;overflow-x:auto;
+  -webkit-overflow-scrolling:touch;scrollbar-width:none;
+}
+.lk-subs::-webkit-scrollbar{display:none;}
+.cat-pill{
+  flex-shrink:0;padding:9px 18px;border-radius:22px;
+  border:2px solid rgba(255,255,255,.4);background:transparent;
+  color:rgba(255,255,255,.85);font-size:.9rem;font-weight:700;
+  cursor:pointer;white-space:nowrap;min-height:42px;
+  -webkit-tap-highlight-color:transparent;
+}
+.cat-pill:active,.cat-pill:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.7);}
+.cat-pill.active{background:#fff;color:var(--green-dark,#2e5d34);border-color:#fff;}
+.sub-pill{
+  flex-shrink:0;padding:6px 14px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.35);background:transparent;
+  color:rgba(255,255,255,.8);font-size:.82rem;font-weight:600;
+  cursor:pointer;white-space:nowrap;min-height:34px;
+  -webkit-tap-highlight-color:transparent;
+}
+.sub-pill:active,.sub-pill:hover{background:rgba(255,255,255,.2);}
+.sub-pill.active{background:rgba(255,255,255,.25);border-color:rgba(255,255,255,.7);color:#fff;}
+
+/* ── results ── */
+.lk-main{padding:12px 12px 32px;max-width:1100px;margin:0 auto;}
+.lk-count{font-size:.8rem;color:#666;margin-bottom:10px;padding:0 4px;}
+
+/* result card */
+.r-card{
+  background:#fff;border-radius:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.1);
+  margin-bottom:8px;padding:14px 16px;
+  display:flex;align-items:flex-start;gap:12px;
+  border-left:4px solid var(--green-light,#6abf74);
+}
+.r-info{flex:1;min-width:0;}
+.r-name{font-size:1.15rem;font-weight:800;color:#111;line-height:1.2;word-break:break-word;}
+.r-meta{font-size:.78rem;color:#888;margin-top:4px;}
+.r-unit-price{font-size:.82rem;color:#555;font-weight:600;margin-top:3px;}
+.r-price-block{
+  text-align:right;flex-shrink:0;
+  display:flex;flex-direction:column;align-items:flex-end;gap:2px;
+}
+.r-sell-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:#aaa;}
+.r-sell-price{font-size:2rem;font-weight:900;color:var(--green-dark,#2e5d34);line-height:1;}
+.r-unit{font-size:.75rem;color:#777;margin-top:2px;}
+.r-cost{font-size:.75rem;color:#bbb;margin-top:2px;}
+.badge{display:inline-block;font-size:.62rem;font-weight:800;padding:2px 6px;border-radius:8px;margin-left:5px;vertical-align:middle;text-transform:uppercase;}
+.badge-new{background:var(--amber,#f59e0b);color:#fff;}
+.badge-low{background:var(--red,#dc2626);color:#fff;}
+
+/* empty / loading states */
+.lk-empty{text-align:center;padding:48px 24px;color:#aaa;}
+.lk-empty .icon{font-size:3rem;margin-bottom:12px;}
+.lk-empty p{font-size:1rem;margin:4px 0;}
+.lk-loading{text-align:center;padding:32px;color:#888;font-size:.9rem;}
+
+/* responsive 2-col on wide screens */
+@media(min-width:820px){
+  .lk-results{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .lk-results .r-card{margin-bottom:0;}
+}
+@media(max-width:500px){
+  .r-card{flex-direction:column;gap:8px;}
+  .r-price-block{flex-direction:row;align-items:center;gap:12px;border-top:1px solid #eee;padding-top:8px;width:100%;}
+  .r-sell-label{display:none;}
+  .r-sell-price{font-size:1.8rem;}
+}
+</style>
 </head>
-<body class="lookup-page">
+<body>
 
-  <header class="lookup-header">
-    <div>
-      <h1>🌿 {{ shop_name }}</h1>
-      <div class="tagline">Price Lookup</div>
-    </div>
-    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-      <a href="{{ url_for('public.pricelist') }}" class="admin-link" target="_blank">🖨 Price List</a>
-      {% if is_admin %}
-        <a href="{{ url_for('admin.products') }}" class="admin-link">⚙ Admin</a>
-      {% endif %}
-      <a href="{{ url_for('auth.logout') }}" class="admin-link">🚪 {{ username }}</a>
-    </div>
-  </header>
-
-  <section class="search-section">
-    <label class="search-label" for="searchInput">What are you looking for?</label>
-    <div class="search-wrapper">
-      <input type="text" id="searchInput" class="search-input"
-             placeholder="e.g. cattle nuts, straw bale… or scan barcode"
-             autocomplete="off" autofocus spellcheck="false" inputmode="search">
-      <button class="search-clear" id="searchClear" title="Clear" aria-label="Clear">✕</button>
-      <span class="search-icon">🔍</span>
-    </div>
-    <div class="search-hint">Type to search · scan a barcode · or browse by category</div>
-  </section>
-
-  <div class="category-pills" id="categoryPills">
-    <button class="cat-pill active" data-cat="" onclick="selectCategory(this,'')">All</button>
-    {% for parent in cat_tree %}
-    <button class="cat-pill" data-cat="{{ parent.name }}" onclick="selectCategory(this,'{{ parent.name }}')">{{ parent.name }}</button>
-    {% endfor %}
+<header class="lk-header">
+  <h1>🌿 {{ shop_name }}</h1>
+  <div class="hlinks">
+    {% if is_admin %}<a href="{{ url_for('public.pricelist') }}" target="_blank">🖨 Price List</a>{% endif %}
+    {% if is_admin %}<a href="{{ url_for('admin.products') }}">⚙ Admin</a>{% endif %}
+    <a href="{{ url_for('auth.logout') }}">🚪 {{ username }}</a>
   </div>
-  <div class="sub-pills" id="subPills" style="display:none"></div>
+</header>
 
-  <main class="results-section">
-    <div class="results-count" id="resultsCount"></div>
-    <div id="resultsContainer">
-      <div class="no-results" id="initialPrompt">
-        <div class="no-results-icon">🌾</div>
-        <p>Start typing above or tap a category to browse</p>
-      </div>
+<div class="lk-search">
+  <div class="lk-search-wrap">
+    <input type="text" id="searchInput" placeholder="Search for a product…"
+           autocomplete="off" autofocus spellcheck="false" inputmode="search">
+    <button class="s-clear" id="searchClear" onclick="clearSearch()">✕</button>
+  </div>
+  <div class="lk-search-hint">Type to search &nbsp;·&nbsp; tap a category</div>
+</div>
+
+<div class="lk-cats" id="catPills">
+  <button class="cat-pill" id="pill-all" data-cat="" onclick="selectCat(this,'')">All Products</button>
+  {% for p in cat_tree %}
+  <button class="cat-pill" data-cat="{{ p.name }}" onclick="selectCat(this,'{{ p.name }}')">{{ p.name }}</button>
+  {% endfor %}
+</div>
+<div class="lk-subs" id="subPills"></div>
+
+<main class="lk-main">
+  <div class="lk-count" id="lkCount"></div>
+  <div id="lkResults">
+    <div class="lk-empty">
+      <div class="icon">🌾</div>
+      <p style="font-size:1.1rem;font-weight:600;color:#666;">Start typing or tap a category</p>
+      <p>Find a price for any product</p>
     </div>
-  </main>
+  </div>
+</main>
 
-  <script>
-    const IS_ADMIN     = {{ 'true' if is_admin else 'false' }};
-    const CAT_TREE     = {{ cat_tree_json|tojson }};
-    const searchInput  = document.getElementById('searchInput');
-    const searchClear  = document.getElementById('searchClear');
-    const subPillsDiv  = document.getElementById('subPills');
-    const resultsDiv   = document.getElementById('resultsContainer');
-    const resultsCount = document.getElementById('resultsCount');
-    let debounceTimer  = null;
-    let lastQuery      = null;
-    let activeCategory = '';
-    let activeParent   = '';
+<script>
+const IS_ADMIN  = {{ 'true' if is_admin else 'false' }};
+const CAT_TREE  = {{ cat_tree_json|tojson }};
+const sInput    = document.getElementById('searchInput');
+const sClear    = document.getElementById('searchClear');
+const lkResults = document.getElementById('lkResults');
+const lkCount   = document.getElementById('lkCount');
 
-    function fmt(n) { return '£' + parseFloat(n).toFixed(2); }
-    function escHtml(s) {
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function highlight(text, query) {
-      if (!query) return escHtml(text);
-      const safe = escHtml(text);
-      const esc  = query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-      return safe.replace(new RegExp('('+esc+')','gi'),'<mark style="background:#fff176;border-radius:2px">$1</mark>');
-    }
-    function renderResults(data, query) {
-      resultsDiv.innerHTML = '';
-      if (data.length === 0) {
-        resultsCount.innerHTML = '';
-        const msg = query ? `No products found for <strong>"${escHtml(query)}"</strong>`
-          : activeCategory ? `No products in <strong>${escHtml(activeCategory)}</strong>` : 'No products found.';
-        resultsDiv.innerHTML = `<div class="no-results"><div class="no-results-icon">🔍</div><p>${msg}</p>
-          <p style="margin-top:8px;font-size:.9rem;color:#aaa">Try a different spelling or category</p></div>`;
-        return;
-      }
-      resultsCount.innerHTML = `<strong>${data.length}</strong> product${data.length!==1?'s':''} found`;
-      data.forEach(item => {
-        const card = document.createElement('div');
-        card.className = 'result-card';
-        const newBadge = item.recently_updated ? '<span class="new-badge">Updated</span>' : '';
-        const lowBadge = item.low_stock ? '<span class="low-stock-badge">Low Stock</span>' : '';
-        const costLine = IS_ADMIN && item.cost_price !== undefined
-          ? `<div class="cost-price-small">Cost: ${fmt(item.cost_price)}</div>` : '';
-        card.innerHTML = `
-          <div class="result-info" style="flex:1">
-            <div class="result-name">${highlight(item.name,query)}${newBadge}${lowBadge}</div>
-            <div class="result-meta">${escHtml(item.category)} &nbsp;·&nbsp; per ${escHtml(item.unit)}</div>
-            ${item.barcode?`<div style="font-size:.72rem;color:#ccc;margin-top:2px">🔲 ${escHtml(item.barcode)}</div>`:''}
-          </div>
-          <div class="price-block">
-            <div>
-              <div class="sell-label">Sell price</div>
-              <div class="sell-price-big">${fmt(item.sell_price)}</div>
-              <div class="per-unit-small">per ${escHtml(item.unit)}</div>
-            </div>
-            <div style="text-align:right;margin-left:12px">${costLine}</div>
-          </div>`;
-        resultsDiv.appendChild(card);
-      });
-    }
-    function doSearch(query, category) {
-      const key = query+'|'+category;
-      if (key === lastQuery) return;
-      lastQuery = key;
-      const hasQ = query.trim() !== '', hasCat = category !== '';
-      if (!hasQ && !hasCat) {
-        resultsDiv.innerHTML = `<div class="no-results"><div class="no-results-icon">🌾</div>
-          <p>Start typing above or tap a category to browse</p></div>`;
-        resultsCount.innerHTML = ''; return;
-      }
-      resultsDiv.innerHTML = '<div class="loading">Searching…</div>';
-      let url = `/api/search?_=${Date.now()}`;
-      if (hasQ)   url += `&q=${encodeURIComponent(query)}`;
-      if (hasCat) url += `&category=${encodeURIComponent(category)}`;
-      fetch(url).then(r=>r.json()).then(data=>renderResults(data,query))
-        .catch(()=>{ resultsDiv.innerHTML='<div class="no-results"><p>Error loading results. Please refresh.</p></div>'; });
-    }
-    // Barcode scanner — rapid keystrokes ending in Enter
-    let barcodeBuffer='', barcodeTimer=null;
-    document.addEventListener('keydown', e => {
-      if (document.activeElement===searchInput) return;
-      if (e.key==='Enter' && barcodeBuffer.length>3) {
-        e.preventDefault();
-        const code=barcodeBuffer; barcodeBuffer='';
-        searchInput.value=code; searchClear.classList.add('visible'); lastQuery=null;
-        fetch(`/api/search?barcode=${encodeURIComponent(code)}`).then(r=>r.json()).then(data=>{
-          resultsCount.innerHTML=`<strong>${data.length}</strong> result${data.length!==1?'s':''} for barcode <code>${escHtml(code)}</code>`;
-          renderResults(data,'');
-        }); return;
-      }
-      if (e.key.length===1) { barcodeBuffer+=e.key; clearTimeout(barcodeTimer); barcodeTimer=setTimeout(()=>{barcodeBuffer='';},100); }
+let debounce=null, lastKey=null, activeCat='', activeParent='', showAll=false;
+
+function fmt(n){return'£'+parseFloat(n).toFixed(2);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function hi(t,q){
+  if(!q)return esc(t);
+  return esc(t).replace(new RegExp('('+q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark style="background:#fff176;border-radius:2px">$1</mark>');
+}
+
+function unitLabel(item){
+  return item.unit==='each'?'each':'per '+esc(item.unit);
+}
+function perHundred(item){
+  if(item.volume_litres&&item.volume_litres>0){
+    return fmt(item.sell_price/(item.volume_litres*10))+' per 100ml';
+  }
+  if(item.weight_kg&&item.weight_kg>0){
+    return fmt(item.sell_price/(item.weight_kg*10))+' per 100g';
+  }
+  return null;
+}
+
+function renderResults(data,q){
+  if(data.length===0){
+    const msg=q?`No results for <strong>"${esc(q)}"</strong>`:activeCat?`No products in <strong>${esc(activeCat)}</strong>`:'No products found.';
+    lkResults.innerHTML=`<div class="lk-empty"><div class="icon">🔍</div><p>${msg}</p><p>Try a different search or category</p></div>`;
+    lkCount.innerHTML='';return;
+  }
+  lkCount.innerHTML=`<strong>${data.length}</strong> product${data.length!==1?'s':''} found`;
+  const grid=document.createElement('div');
+  grid.className='lk-results';
+  data.forEach(item=>{
+    const newB=item.recently_updated?'<span class="badge badge-new">New</span>':'';
+    const lowB=item.low_stock?'<span class="badge badge-low">Low Stock</span>':'';
+    const costL=IS_ADMIN&&item.cost_price!==undefined?`<div class="r-cost">Cost: ${fmt(item.cost_price)}</div>`:'';
+    const ph=perHundred(item);
+    const unitPriceL=ph?`<div class="r-unit-price">${ph}</div>`:'';
+    const card=document.createElement('div');
+    card.className='r-card';
+    card.innerHTML=`
+      <div class="r-info">
+        <div class="r-name">${hi(item.name,q)}${newB}${lowB}</div>
+        <div class="r-meta">${esc(item.category)}${item.unit?'&nbsp;·&nbsp;'+unitLabel(item):''}</div>
+        ${unitPriceL}
+      </div>
+      <div class="r-price-block">
+        <div class="r-sell-label">Sell Price</div>
+        <div class="r-sell-price">${fmt(item.sell_price)}</div>
+        <div class="r-unit">${unitLabel(item)}</div>
+        ${costL}
+      </div>`;
+    grid.appendChild(card);
+  });
+  lkResults.innerHTML='';lkResults.appendChild(grid);
+}
+
+function doSearch(){
+  const q=sInput.value.trim();
+  const key=q+'|'+activeCat+'|'+showAll;
+  if(key===lastKey)return;
+  lastKey=key;
+  if(!q&&!activeCat&&!showAll){
+    lkResults.innerHTML='<div class="lk-empty"><div class="icon">🌾</div><p style="font-size:1.1rem;font-weight:600;color:#666;">Start typing or tap a category</p><p>Find a price for any product</p></div>';
+    lkCount.innerHTML='';return;
+  }
+  lkResults.innerHTML='<div class="lk-loading">Searching…</div>';
+  let url=`/api/search?_=${Date.now()}`;
+  if(q)url+=`&q=${encodeURIComponent(q)}`;
+  if(activeCat)url+=`&category=${encodeURIComponent(activeCat)}`;
+  fetch(url).then(r=>r.json()).then(d=>renderResults(d,q)).catch(()=>{
+    lkResults.innerHTML='<div class="lk-empty"><p>Error — please refresh</p></div>';
+  });
+}
+
+function clearSearch(){
+  sInput.value='';sClear.classList.remove('show');lastKey=null;doSearch();sInput.focus();
+}
+
+function selectSub(btn,sub){
+  document.querySelectorAll('.sub-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  activeCat=sub||activeParent;lastKey=null;doSearch();
+}
+
+function selectCat(btn,cat){
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  activeParent=cat;activeCat=cat;
+  showAll=!cat&&!sInput.value.trim();  // "All Products" with no query → load all
+  lastKey=null;
+  // sub-pills
+  const subDiv=document.getElementById('subPills');
+  const node=CAT_TREE.find(p=>p.name===cat);
+  if(node&&node.subs&&node.subs.length){
+    subDiv.innerHTML='';
+    const allB=document.createElement('button');
+    allB.className='sub-pill active';allB.textContent='All '+cat;
+    allB.onclick=()=>selectSub(allB,cat);subDiv.appendChild(allB);
+    node.subs.forEach(s=>{
+      const b=document.createElement('button');
+      b.className='sub-pill';b.textContent=s;
+      b.onclick=()=>selectSub(b,s);subDiv.appendChild(b);
     });
-    function selectSub(btn, sub) {
-      document.querySelectorAll('.sub-pill').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      activeCategory = sub || activeParent;
-      lastQuery = null;
-      doSearch(searchInput.value, activeCategory);
-    }
-    function selectCategory(btn, cat) {
-      document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active');
-      activeParent   = cat;
-      activeCategory = cat;
-      lastQuery      = null;
-      // Build sub-pills
-      const node = CAT_TREE.find(p=>p.name===cat);
-      if (node && node.subs && node.subs.length) {
-        subPillsDiv.innerHTML = '';
-        const allBtn = document.createElement('button');
-        allBtn.className = 'sub-pill active';
-        allBtn.textContent = 'All ' + cat;
-        allBtn.onclick = () => selectSub(allBtn, cat);
-        subPillsDiv.appendChild(allBtn);
-        node.subs.forEach(s => {
-          const b = document.createElement('button');
-          b.className = 'sub-pill';
-          b.textContent = s;
-          b.onclick = () => selectSub(b, s);
-          subPillsDiv.appendChild(b);
-        });
-        subPillsDiv.style.display = 'flex';
-      } else {
-        subPillsDiv.style.display = 'none';
-        subPillsDiv.innerHTML = '';
-      }
-      doSearch(searchInput.value, cat);
-    }
-    searchInput.addEventListener('input',()=>{
-      clearTimeout(debounceTimer); lastQuery=null;
-      searchClear.classList.toggle('visible',searchInput.value.length>0);
-      debounceTimer=setTimeout(()=>doSearch(searchInput.value,activeCategory),120);
-    });
-    searchInput.addEventListener('keydown',e=>{
-      if (e.key==='Escape'){ searchInput.value=''; searchClear.classList.remove('visible'); lastQuery=null; doSearch('',activeCategory); }
-    });
-    searchClear.addEventListener('click',()=>{
-      searchInput.value=''; searchClear.classList.remove('visible'); lastQuery=null; searchInput.focus(); doSearch('',activeCategory);
-    });
-    window.addEventListener('focus',()=>{ lastQuery=null; doSearch(searchInput.value,activeCategory); });
-  </script>
+    subDiv.style.display='flex';
+  } else {
+    subDiv.style.display='none';subDiv.innerHTML='';
+  }
+  doSearch();
+}
+
+sInput.addEventListener('input',()=>{
+  showAll=false;
+  sClear.classList.toggle('show',sInput.value.length>0);
+  clearTimeout(debounce);lastKey=null;
+  debounce=setTimeout(doSearch,150);
+});
+sInput.addEventListener('keydown',e=>{
+  if(e.key==='Escape')clearSearch();
+});
+
+window.addEventListener('focus',()=>{lastKey=null;doSearch();});
+</script>
 </body>
 </html>

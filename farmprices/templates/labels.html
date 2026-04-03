@@ -1,130 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shelf Labels — {{ shop_name }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-  <style>
-    body { background: white; }
-    .labels-toolbar {
-      background: var(--amber-pale);
-      border-bottom: 2px solid var(--amber);
-      padding: 12px 24px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .labels-toolbar .no-print { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .labels-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-      gap: 4px;
-      padding: 16px;
-    }
-    .label-card {
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      padding: 10px 12px;
-      text-align: center;
-      page-break-inside: avoid;
-      break-inside: avoid;
-      background: white;
-    }
-    .label-name {
-      font-size: .8rem;
-      font-weight: 700;
-      color: #333;
-      margin-bottom: 4px;
-      line-height: 1.2;
-    }
-    .label-price {
-      font-size: 1.6rem;
-      font-weight: 900;
-      color: var(--green-dark);
-      line-height: 1;
-    }
-    .label-unit {
-      font-size: .68rem;
-      color: #999;
-      margin-top: 2px;
-    }
-    .label-category {
-      font-size: .65rem;
-      color: #bbb;
-      margin-top: 4px;
-      text-transform: uppercase;
-      letter-spacing: .4px;
-    }
-    .label-barcode {
-      font-size: .6rem;
-      color: #ddd;
-      margin-top: 4px;
-      font-family: monospace;
-    }
-    .label-shop {
-      font-size: .6rem;
-      color: #ddd;
-      margin-top: 6px;
-      border-top: 1px solid #eee;
-      padding-top: 4px;
-    }
+{% extends "base_admin.html" %}
+{% block title %}Shelf Labels{% endblock %}
+{% block page_title %}🏷 Shelf Labels{% endblock %}
+{% block topbar_actions %}
+  <span class="lcount" style="font-size:.82rem;color:#888;">{{ products|length }} label{{ 's' if products|length != 1 else '' }} &nbsp;·&nbsp; 18 per A4 sheet</span>
+  <button class="btn btn-primary btn-sm" onclick="window.print()">🖨 Print</button>
+{% endblock %}
+{% block head %}
+<style>
+/* ── toolbar ── */
+.ltoolbar{background:#f8f8f8;border:1px solid #e0e0e0;border-radius:6px;padding:10px 14px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px;}
+.ltoolbar select,.ltoolbar button{font-size:.8rem;padding:4px 8px;border:1px solid #aaa;border-radius:3px;background:#fff;cursor:pointer;}
+.ltoolbar label{font-size:.78rem;display:flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;}
+.ltoolbar .sep{width:1px;background:#ccc;height:24px;}
+.ltoolbar input[type=range]{width:90px;cursor:pointer;}
+#sz-val{font-size:.78rem;font-weight:700;min-width:28px;text-align:center;}
 
-    @media print {
-      .no-print { display: none !important; }
-      .labels-toolbar { display: none !important; }
-      .labels-grid { padding: 0; gap: 2px; }
-      body { background: white; }
-    }
+/* ── screen grid ── */
+.labels-grid{display:grid;grid-template-columns:repeat(3,70mm);gap:2mm;padding:2mm;background:#f5f5f5;}
 
-    @media (max-width: 600px) {
-      .labels-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-  </style>
-</head>
-<body>
+/* ── card ── */
+.label-card{width:70mm;height:49.5mm;font-size:14pt;border:1px solid #333;background:#fff;overflow:hidden;display:flex;flex-direction:column;box-sizing:border-box;break-inside:avoid;page-break-inside:avoid;}
+.label-top{border-bottom:2px solid #000;padding:.15em .3em .12em;flex-shrink:0;}
+.label-name{font-size:1.15em;font-weight:900;line-height:1.2;color:#000;text-transform:uppercase;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;}
+.label-cat{font-size:.72em;color:#444;margin-top:.1em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.label-price-wrap{padding:.2em .3em .15em;flex-shrink:0;}
+.label-price{font-size:2.5em;font-weight:900;line-height:1;color:#000;}
+.label-unit{font-size:.78em;color:#333;display:block;margin-top:.1em;font-weight:600;}
+.label-per100{font-size:.78em;color:#222;font-weight:700;padding:.1em .3em;border-top:1px dashed #aaa;flex-shrink:0;}
+.label-supplier{font-size:.68em;color:#444;padding:.1em .3em 0;flex-shrink:0;}
+.label-footer{border-top:1px solid #ccc;padding:.15em .3em;margin-top:auto;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.label-shop{font-size:.68em;color:#333;font-weight:700;}
+.label-date{font-size:.62em;color:#666;}
+.h-cat .label-cat{display:none;}
+.h-supplier .label-supplier{display:none;}
+.h-per100 .label-per100{display:none;}
+.h-shop .label-footer{display:none;}
 
-  <div class="labels-toolbar no-print">
-    <strong>🏷 Shelf Labels</strong>
-    <form method="GET" style="display:flex;gap:8px;align-items:center">
-      <select name="category" onchange="this.form.submit()"
-              style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem">
-        <option value="">All Categories</option>
-        {% for cat in categories %}
-          <option value="{{ cat }}" {% if cat == cat_filter %}selected{% endif %}>{{ cat }}</option>
+@media print{
+  @page{size:A4 portrait;margin:0;}
+  .admin-content{padding:0!important;}
+  .ltoolbar{display:none!important;}
+  body{background:#fff;margin:0;padding:0;}
+  .labels-grid{display:grid;grid-template-columns:repeat(3,70mm);gap:0;padding:0;width:210mm;}
+  .label-card{width:70mm;height:49.5mm;border:0.5px solid #000;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="ltoolbar no-print">
+  <form method="GET" id="filterForm" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+    <select name="category" onchange="document.getElementById('filterForm').submit()">
+      <option value="">All Categories</option>
+      {% for p in cat_tree %}
+        <option value="{{ p.name }}" {% if p.name==cat_filter %}selected{% endif %}>{{ p.name }}</option>
+        {% for s in p.subcategories %}
+          <option value="{{ s.name }}" {% if s.name==cat_filter %}selected{% endif %}>↳ {{ s.name }}</option>
         {% endfor %}
-      </select>
-    </form>
-    <span style="font-size:.85rem;color:#888">{{ products|length }} label{{ 's' if products|length != 1 else '' }}</span>
-    <button onclick="window.print()" class="btn btn-primary btn-sm">🖨 Print Labels</button>
-    <a href="{{ url_for('admin.products') }}" class="btn btn-secondary btn-sm">← Admin</a>
-    <span style="font-size:.78rem;color:#aaa">Generated {{ generated }}</span>
-  </div>
+      {% endfor %}
+    </select>
+    {% if suppliers %}
+    <select name="supplier" onchange="document.getElementById('filterForm').submit()">
+      <option value="">All Suppliers</option>
+      {% for s in suppliers %}
+        <option value="{{ s }}" {% if s==sup_filter %}selected{% endif %}>{{ s }}</option>
+      {% endfor %}
+    </select>
+    {% endif %}
+  </form>
+  <div class="sep"></div>
+  <label style="gap:6px;">
+    <span style="font-size:.75rem;font-weight:700;">Font:</span>
+    <input type="range" id="szSlider" min="6" max="16" value="14" step="0.5" oninput="setFontSize(this.value)">
+    <span id="sz-val">14pt</span>
+  </label>
+  <div class="sep"></div>
+  <label><input type="checkbox" id="tog-cat" checked onchange="tog('h-cat')"> Category</label>
+  <label><input type="checkbox" id="tog-sup" onchange="tog('h-supplier')"> Supplier</label>
+  <label><input type="checkbox" id="tog-100" checked onchange="tog('h-per100')"> Price/100</label>
+  <label><input type="checkbox" id="tog-shop" checked onchange="tog('h-shop')"> Shop name</label>
+</div>
 
-  <div class="labels-grid">
-    {% for p in products %}
-    <div class="label-card">
+<div class="labels-grid" id="grid">
+  {% for p in products %}
+  <div class="label-card">
+    <div class="label-top">
       <div class="label-name">{{ p.name }}</div>
-      <div class="label-price">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</div>
-      <div class="label-unit">per {{ p.unit }}</div>
-      <div class="label-category">{{ p.category }}</div>
-      {% if p.barcode %}
-        <div class="label-barcode">{{ p.barcode }}</div>
-      {% endif %}
-      <div class="label-shop">{{ shop_name }}</div>
+      <div class="label-cat">{{ p.category }}</div>
     </div>
-    {% endfor %}
+    <div class="label-price-wrap">
+      <div class="label-price">{{ currency }}{{ "%.2f"|format(p.sell_price) }}</div>
+      <span class="label-unit">{% if p.unit != 'each' %}per {{ p.unit }}{% else %}each{% endif %}</span>
+    </div>
+    {% if p.price_per_100 %}
+    <div class="label-per100">{{ currency }}{{ "%.2f"|format(p.price_per_100) }} {{ p.per_100_label }}</div>
+    {% endif %}
+    {% if p.supplier_name %}
+    <div class="label-supplier">{{ p.supplier_name }}</div>
+    {% endif %}
+    <div class="label-footer">
+      <span class="label-shop">{{ shop_name }}</span>
+      <span class="label-date">{{ generated }}</span>
+    </div>
   </div>
-
-  {% if not products %}
-  <div style="text-align:center;padding:60px;color:#aaa">
-    <div style="font-size:3rem;margin-bottom:12px">🏷</div>
-    <p>No products found.
-      {% if cat_filter %}Try a different category.{% endif %}
-    </p>
-  </div>
-  {% endif %}
-
-</body>
-</html>
+  {% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+var grid=document.getElementById('grid');
+function setFontSize(v){var cards=grid.querySelectorAll('.label-card');for(var i=0;i<cards.length;i++)cards[i].style.fontSize=v+'pt';document.getElementById('sz-val').textContent=v+'pt';}
+function tog(cls){grid.classList.toggle(cls);}
+grid.classList.add('h-supplier');
+document.getElementById('tog-sup').checked=false;
+</script>
+{% endblock %}

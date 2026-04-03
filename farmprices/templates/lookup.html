@@ -110,6 +110,15 @@ html,body{margin:0;padding:0;height:100%;background:#f0f2f0;font-family:Arial,He
 .lk-empty p{font-size:1rem;margin:4px 0;}
 .lk-loading{text-align:center;padding:32px;color:#888;font-size:.9rem;}
 
+/* desktop — show thin scrollbar and enable wheel scroll */
+@media(hover:hover){
+  .lk-cats{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent;}
+  .lk-cats::-webkit-scrollbar{display:block;height:4px;}
+  .lk-cats::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:2px;}
+  .lk-subs{scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.25) transparent;}
+  .lk-subs::-webkit-scrollbar{display:block;height:3px;}
+  .lk-subs::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:2px;}
+}
 /* responsive 2-col on wide screens */
 @media(min-width:820px){
   .lk-results{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
@@ -291,6 +300,16 @@ sInput.addEventListener('keydown',e=>{
 });
 
 window.addEventListener('focus',()=>{lastKey=null;doSearch();});
+
+// Mouse wheel → horizontal scroll for desktop
+['catPills','subPills'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('wheel',e=>{
+    if(e.deltaY===0)return;
+    e.preventDefault();
+    el.scrollLeft+=e.deltaY;
+  },{passive:false});
+});
 </script>
 </body>
 </html>

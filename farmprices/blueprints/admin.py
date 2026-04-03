@@ -17,6 +17,7 @@ from flask import (
 from db import get_db
 from decorators import require_admin
 from helpers import (
+    cat_tree as _cat_tree_shared,
     get_pricing_config, get_setting, log_event,
     product_snapshot, sell_price
 )
@@ -211,6 +212,7 @@ def add_product():
         except (TypeError, ValueError):
             volume_litres = None
 
+        barcode = request.form.get("barcode", "").strip()[:_MAX_BARCODE]
         cursor = db.execute(
             """INSERT INTO products
                (name, category, unit, supplier_name, supplier_tel,
@@ -218,7 +220,7 @@ def add_product():
                 quantity, reorder_threshold, weight_kg, volume_litres, last_updated)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
             (name, category, unit, supplier, tel, cost, markup, notes,
-             "", qty, reorder, weight_kg, volume_litres, date.today().isoformat())
+             barcode, qty, reorder, weight_kg, volume_litres, date.today().isoformat())
         )
         new_id = cursor.lastrowid
         log_event(db, "product_added", product_id=new_id, product_name=name,
@@ -278,7 +280,9 @@ def edit_product(pid):
         supplier    = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
         notes       = request.form.get("notes", "").strip()[:_MAX_NOTES]
         change_note = request.form.get("change_note", "").strip()[:_MAX_NOTES]
-        barcode     = product["barcode"] or ""  # keep existing barcode
+        barcode     = request.form.get("barcode", "").strip()[:_MAX_BARCODE]
+        if not barcode:
+            barcode = product["barcode"] or ""  # fall back to existing if form is empty
         # Auto-fill tel from suppliers table
         tel = ""
         if supplier:
@@ -604,7 +608,6 @@ def import_csv():
     # Preview mode
     if request.form.get("action") == "preview":
         return render_template("admin_import.html",
-                               shopname=get_setting("shop_name"),
                                shop_name=get_setting("shop_name"),
                                categories=categories, units=units,
                                preview_rows=rows[:20],
@@ -731,6 +734,7 @@ def price_history(pid):
                            history=history,
                            sell_price=sp,
                            currency=currency,
+                           default_markup=default_markup,
                            shop_name=get_setting("shop_name"))
 
 
@@ -748,29 +752,26 @@ def history():
     page           = max(1, int(request.args.get("page", 1)))
     per_page       = 100
 
-    q      = "SELECT * FROM audit_log WHERE 1=1"
+    where  = "WHERE 1=1"
     params = []
     if event_filter:
-        q += " AND event_type=?"
+        where += " AND event_type=?"
         params.append(event_filter)
     if product_filter:
-        q += " AND product_name LIKE ?"
+        where += " AND product_name LIKE ?"
         params.append(f"%{product_filter}%")
     if user_filter:
-        q += " AND changed_by LIKE ?"
+        where += " AND changed_by LIKE ?"
         params.append(f"%{user_filter}%")
     if date_from:
-        q += " AND changed_at >= ?"
+        where += " AND changed_at >= ?"
         params.append(date_from + " 00:00:00")
     if date_to:
-        q += " AND changed_at <= ?"
+        where += " AND changed_at <= ?"
         params.append(date_to + " 23:59:59")
 
-    total  = db.execute(
-        q.replace("SELECT *", "SELECT COUNT(*)"), params
-    ).fetchone()[0]
-
-    q += " ORDER BY changed_at DESC LIMIT ? OFFSET ?"
+    total = db.execute(f"SELECT COUNT(*) FROM audit_log {where}", params).fetchone()[0]
+    q     = f"SELECT * FROM audit_log {where} ORDER BY changed_at DESC LIMIT ? OFFSET ?"
     rows = db.execute(q, params + [per_page, (page - 1) * per_page]).fetchall()
 
     hist = []
@@ -1077,18 +1078,14 @@ def delete_user(uid):
 @require_admin
 def suppliers():
     db   = get_db()
-    rows = db.execute("SELECT * FROM suppliers ORDER BY name").fetchall()
-    # Annotate each supplier with product count
-    enriched = []
-    for s in rows:
-        count = db.execute(
-            "SELECT COUNT(*) FROM products WHERE supplier_name=? AND active=1",
-            (s["name"],)
-        ).fetchone()[0]
-        enriched.append(dict(s) | {"product_count": count})
-
+    rows = db.execute(
+        """SELECT s.*, COUNT(p.id) AS product_count
+           FROM suppliers s
+           LEFT JOIN products p ON p.supplier_name=s.name AND p.active=1
+           GROUP BY s.id ORDER BY s.name"""
+    ).fetchall()
     return render_template("admin_suppliers.html",
-                           suppliers=enriched,
+                           suppliers=[dict(r) for r in rows],
                            shop_name=get_setting("shop_name"))
 
 

@@ -88,3 +88,18 @@ def get_pricing_config() -> tuple[float, str]:
     markup  = float(get_setting("default_markup", "30"))
     rounding = get_setting("price_rounding", "none")
     return markup, rounding
+
+
+# ── Category tree ─────────────────────────────────────────────────────────────
+
+def cat_tree(db) -> list:
+    """Return list of parent category dicts each with a 'subcategories' list."""
+    rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()
+    parents = [dict(r) for r in rows if r["parent_id"] is None]
+    subs = {}
+    for r in rows:
+        if r["parent_id"] is not None:
+            subs.setdefault(r["parent_id"], []).append(dict(r))
+    for p in parents:
+        p["subcategories"] = subs.get(p["id"], [])
+    return parents

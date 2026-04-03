@@ -7,9 +7,6 @@ from flask import (
     Blueprint, flash, redirect, render_template,
     request, session, url_for
 )
-from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
-
 from db import get_db
 from helpers import get_setting, log_event
 

@@ -5,7 +5,7 @@ All state-changing endpoints require admin role.
 import sqlite3
 from datetime import date
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, make_response, request, session
 
 from db import get_db
 from decorators import require_admin, require_login
@@ -88,7 +88,6 @@ def search():
 
         results.append(item)
 
-    from flask import make_response
     resp = make_response(jsonify(results))
     resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     resp.headers["Pragma"]        = "no-cache"
@@ -98,6 +97,7 @@ def search():
 # ── Categories ────────────────────────────────────────────────────────────────
 
 @bp.route("/categories", methods=["GET"])
+@require_login
 def get_categories():
     db   = get_db()
     rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()

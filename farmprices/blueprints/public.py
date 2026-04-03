@@ -3,27 +3,14 @@ Public blueprint — price lookup (requires any login), print price list, shelf 
 """
 from datetime import date, datetime
 
-from flask import (
-    Blueprint, render_template, request, session
-)
+from flask import Blueprint, flash, redirect, render_template, request, session, url_for
 
 from db import get_db
-from decorators import require_login
-from helpers import get_setting, get_pricing_config, sell_price
+from decorators import require_admin, require_login
+from helpers import get_setting, get_pricing_config, sell_price, cat_tree as _cat_tree
 
 bp = Blueprint("public", __name__)
 
-
-def _cat_tree(db):
-    rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()
-    parents = [dict(r) for r in rows if r["parent_id"] is None]
-    subs = {}
-    for r in rows:
-        if r["parent_id"] is not None:
-            subs.setdefault(r["parent_id"], []).append(dict(r))
-    for p in parents:
-        p["subcategories"] = subs.get(p["id"], [])
-    return parents
 
 @bp.route("/")
 @require_login
@@ -42,12 +29,8 @@ def index():
 
 
 @bp.route("/pricelist")
-@require_login
+@require_admin
 def pricelist():
-    from flask import redirect, url_for, flash
-    if session.get("role") != "admin":
-        flash("Admin access required.", "error")
-        return redirect(url_for("public.index"))
     db                       = get_db()
     default_markup, rounding = get_pricing_config()
     shop_name                = get_setting("shop_name", "Tenbury Farm Supplies")
@@ -71,13 +54,8 @@ def pricelist():
 
 
 @bp.route("/labels")
-@require_login
+@require_admin
 def labels():
-    if session.get("role") != "admin":
-        from flask import redirect, url_for, flash
-        flash("Admin access required.", "error")
-        return redirect(url_for("public.index"))
-
     db                       = get_db()
     default_markup, rounding = get_pricing_config()
     shop_name                = get_setting("shop_name", "Tenbury Farm Supplies")
@@ -86,7 +64,6 @@ def labels():
     sup_filter               = request.args.get("supplier", "")
 
     tree = _cat_tree(db)
-    # expand cat_filter to include subcategories
     cat_names = []
     if cat_filter:
         for p in tree:

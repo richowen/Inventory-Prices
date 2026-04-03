@@ -46,7 +46,8 @@
     <div style="margin-bottom:12px">
       <div style="font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;color:#aaa;margin-bottom:2px">Markup</div>
       <div style="font-size:1rem;font-weight:700;color:var(--amber)">
-        {{ product.markup_pct|int if product.markup_pct is not none else 'Default' }}%
+        {{ (product.markup_pct if product.markup_pct is not none else default_markup)|int }}%
+        {% if product.markup_pct is none %}<span style="font-size:.75rem;color:#aaa;font-weight:400">(default)</span>{% endif %}
       </div>
     </div>
     <div style="margin-bottom:12px">

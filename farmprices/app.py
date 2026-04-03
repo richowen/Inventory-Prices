@@ -59,13 +59,13 @@ def create_app(config_class=Config) -> Flask:
     with app.app_context():
         init_db(app)
 
+    warn_if_insecure()
     return app
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    warn_if_insecure()
     os.makedirs(Config.UPLOAD_FOLDER, exist_ok=True)
 
     app = create_app()
@@ -82,8 +82,7 @@ if __name__ == "__main__":
     print("  Tenbury Farm Supplies — Price Lookup App")
     print(f"  Local:    http://localhost:{Config.PORT}")
     print(f"  Network:  http://{local_ip}:{Config.PORT}")
-    print(f"  Login:    username=admin  password={Config.DEFAULT_PASSWORD}")
-    print("            (change in Admin → Users)")
+    print("  Login:    username=admin  (change password in Admin → Users)")
     print("  Press Ctrl+C to stop")
     print("=" * 58 + "\n")
 

@@ -103,13 +103,22 @@ def products():
     db                       = get_db()
     default_markup, rounding = get_pricing_config()
     category_filter          = request.args.get("category", "")
+    supplier_filter          = request.args.get("supplier", "")
     search_q                 = request.args.get("q", "")
 
     q      = "SELECT * FROM products WHERE active=1"
     params = []
     if category_filter:
-        q += " AND category=?"
-        params.append(category_filter)
+        sub_rows = db.execute(
+            "SELECT name FROM categories WHERE parent_id=(SELECT id FROM categories WHERE name=?)",
+            (category_filter,)
+        ).fetchall()
+        all_cats = [category_filter] + [r["name"] for r in sub_rows]
+        q += f" AND category IN ({','.join('?'*len(all_cats))})"
+        params.extend(all_cats)
+    if supplier_filter:
+        q += " AND supplier_name=?"
+        params.append(supplier_filter)
     if search_q:
         q += " AND (name LIKE ? OR barcode LIKE ?)"
         params += [f"%{search_q}%", f"%{search_q}%"]
@@ -126,6 +135,7 @@ def products():
                            cat_tree=tree,
                            categories=_flat_cats(db),
                            category_filter=category_filter,
+                           supplier_filter=supplier_filter,
                            search_q=search_q,
                            default_markup=default_markup,
                            currency=currency,

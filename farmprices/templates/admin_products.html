@@ -74,6 +74,12 @@
 
 <form method="GET" class="toolbar">
   <input type="text" name="q" class="toolbar-search" placeholder="Search name or barcode…" value="{{ search_q }}" autocomplete="off">
+  <select name="supplier" class="toolbar-select" onchange="this.form.submit()">
+    <option value="">All Suppliers</option>
+    {% for s in suppliers %}
+      <option value="{{ s }}" {% if s == supplier_filter %}selected{% endif %}>{{ s }}</option>
+    {% endfor %}
+  </select>
   <select name="category" class="toolbar-select" onchange="this.form.submit()">
     <option value="">All Categories</option>
     {% for parent in cat_tree %}
@@ -84,7 +90,7 @@
     {% endfor %}
   </select>
   <button type="submit" class="btn btn-secondary">Filter</button>
-  {% if search_q or category_filter %}<a href="{{ url_for('admin.products') }}" class="btn btn-secondary">Clear</a>{% endif %}
+  {% if search_q or category_filter or supplier_filter %}<a href="{{ url_for('admin.products') }}" class="btn btn-secondary">Clear</a>{% endif %}
 </form>
 
 {% if products %}

@@ -1,0 +1,91 @@
+{% extends "base_admin.html" %}
+{% block title %}Categories{% endblock %}
+{% block page_title %}Categories{% endblock %}
+{% block topbar_actions %}
+<button class="btn btn-primary btn-sm" onclick="document.getElementById('addParentPanel').classList.toggle('open')">+ Add Category</button>
+{% endblock %}
+{% block head %}
+<style>
+.add-panel{background:var(--blue-pale);border:1px solid #90caf9;border-radius:var(--radius);padding:20px;margin-bottom:20px;display:none}
+.add-panel.open{display:block}
+.cat-group{background:white;border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:16px;overflow:hidden}
+.cat-parent-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--grey-light);background:#fafafa}
+.cat-parent-name{font-weight:700;font-size:1rem;flex:1}
+.cat-sub-row{display:flex;align-items:center;gap:10px;padding:10px 16px 10px 36px;border-bottom:1px solid var(--grey-light)}
+.cat-sub-row:last-child{border-bottom:none}
+.cat-sub-name{flex:1;font-size:.9rem;color:#555}
+.sub-add-row{padding:10px 16px 10px 36px;display:flex;gap:8px;align-items:center}
+.tag-error{color:var(--red);font-size:.82rem;margin-top:4px}
+.product-count{font-size:.78rem;color:#aaa;margin-left:4px}
+</style>
+{% endblock %}
+{% block content %}
+{% set active_nav = 'categories' %}
+
+<div class="add-panel" id="addParentPanel">
+  <h3 style="font-size:.95rem;color:var(--blue);margin-bottom:14px">➕ Add Parent Category</h3>
+  <div style="display:flex;gap:8px;align-items:center">
+    <input type="text" id="newParentInput" class="add-tag-input" style="padding:8px 12px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.9rem;width:240px" placeholder="e.g. Animal Feed" maxlength="60"
+           onkeydown="if(event.key==='Enter'){addParent();event.preventDefault();}">
+    <button class="btn btn-primary btn-sm" onclick="addParent()">Add</button>
+  </div>
+  <div class="tag-error" id="parentError"></div>
+</div>
+
+{% if parents %}
+  {% for p in parents %}
+  <div class="cat-group" id="pg-{{ p.id }}">
+    <div class="cat-parent-row">
+      <span class="cat-parent-name">📁 {{ p.name }}</span>
+      <button class="btn btn-secondary btn-sm" data-pid="{{ p.id }}" onclick="toggleSubAdd(this.dataset.pid)">+ Sub</button>
+      <button class="btn btn-danger btn-sm" data-name="{{ p.name|e }}" data-parent="1" onclick="deleteCat(this.dataset.name,true)">🗑</button>
+    </div>
+    {% for s in p.subcategories %}
+    <div class="cat-sub-row" id="sr-{{ s.id }}">
+      <span class="cat-sub-name">↳ {{ s.name }}</span>
+      <button class="btn btn-danger btn-sm" data-name="{{ s.name|e }}" onclick="deleteCat(this.dataset.name,false)">🗑</button>
+    </div>
+    {% endfor %}
+    <div class="sub-add-row" id="subAdd-{{ p.id }}" style="display:none">
+      <input type="text" id="subInput-{{ p.id }}" data-pid="{{ p.id }}" style="padding:7px 10px;border:1px solid var(--grey-mid);border-radius:6px;font-size:.88rem;width:200px" placeholder="Subcategory name" maxlength="60"
+             onkeydown="if(event.key==='Enter'){addSub(this.dataset.pid);event.preventDefault();}">
+      <button class="btn btn-primary btn-sm" data-pid="{{ p.id }}" onclick="addSub(this.dataset.pid)">Add</button>
+      <span class="tag-error" id="subErr-{{ p.id }}"></span>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+<div class="no-results" style="background:white;border-radius:8px;padding:40px;box-shadow:var(--shadow)">
+  <div class="no-results-icon">📂</div>
+  <p>No categories yet.</p>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+const CSRF='{{ csrf_token() }}';
+const H={'Content-Type':'application/json','X-CSRFToken':CSRF};
+function toggleSubAdd(pid){const el=document.getElementById('subAdd-'+pid);el.style.display=el.style.display==='none'?'flex':'none';}
+function addParent(){
+  const inp=document.getElementById('newParentInput'),name=inp.value.trim(),err=document.getElementById('parentError');
+  if(!name)return; err.textContent='';
+  fetch('/api/categories/add',{method:'POST',headers:H,body:JSON.stringify({name})}).then(r=>r.json()).then(d=>{
+    if(d.ok){location.reload();}else err.textContent=d.error||'Error';
+  });
+}
+function addSub(parentId){
+  const inp=document.getElementById('subInput-'+parentId),name=inp.value.trim(),err=document.getElementById('subErr-'+parentId);
+  if(!name)return; err.textContent='';
+  fetch('/api/categories/add',{method:'POST',headers:H,body:JSON.stringify({name,parent_id:parentId})}).then(r=>r.json()).then(d=>{
+    if(d.ok){location.reload();}else err.textContent=d.error||'Error';
+  });
+}
+function deleteCat(name,id,isParent){
+  const msg=isParent?`Delete category "${name}"? Its subcategories will become independent.`:`Delete subcategory "${name}"?`;
+  if(!confirm(msg))return;
+  fetch('/api/categories/delete',{method:'POST',headers:H,body:JSON.stringify({name})}).then(r=>r.json()).then(d=>{
+    if(d.ok){location.reload();}else alert(d.error);
+  });
+}
+</script>
+{% endblock %}

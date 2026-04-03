@@ -40,8 +40,14 @@ def search():
             query += " AND name LIKE ?"
             params.append(f"%{q}%")
         if category:
-            query += " AND category=?"
-            params.append(category)
+            # Expand to include subcategories of the selected category
+            sub_rows = db.execute(
+                "SELECT name FROM categories WHERE parent_id=(SELECT id FROM categories WHERE name=?)",
+                (category,)
+            ).fetchall()
+            all_cats = [category] + [r["name"] for r in sub_rows]
+            query += f" AND category IN ({','.join('?'*len(all_cats))})"
+            params.extend(all_cats)
 
     query += " ORDER BY name"
 
@@ -92,9 +98,8 @@ def search():
 @bp.route("/categories", methods=["GET"])
 def get_categories():
     db   = get_db()
-    cats = [r["name"] for r in
-            db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
-    return jsonify(cats)
+    rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()
+    return jsonify([dict(r) for r in rows])
 
 
 @bp.route("/categories/add", methods=["POST"])
@@ -103,15 +108,16 @@ def add_category():
     db   = get_db()
     data = request.get_json(silent=True) or {}
     name = data.get("name", "").strip()[:60]
+    parent_id = data.get("parent_id") or None
     if not name:
         return jsonify({"ok": False, "error": "Name required"}), 400
     try:
-        db.execute("INSERT INTO categories (name) VALUES (?)", (name,))
+        cur = db.execute("INSERT INTO categories (name, parent_id) VALUES (?,?)", (name, parent_id))
         log_event(db, "category_added",
                   changed_by=session.get("username", ""),
-                  notes=f"Category added: {name!r}")
+                  notes=f"Category added: {name!r}" + (f" (sub of id {parent_id})" if parent_id else ""))
         db.commit()
-        return jsonify({"ok": True})
+        return jsonify({"ok": True, "id": cur.lastrowid})
     except sqlite3.IntegrityError:
         return jsonify({"ok": False, "error": "Already exists"}), 409
 
@@ -122,12 +128,15 @@ def delete_category():
     db   = get_db()
     data = request.get_json(silent=True) or {}
     name = data.get("name", "").strip()
+    # Check products
     count = db.execute(
         "SELECT COUNT(*) FROM products WHERE active=1 AND category=?", (name,)
     ).fetchone()[0]
     if count > 0:
         return jsonify({"ok": False,
                         "error": f"Cannot delete — {count} product(s) use this category"}), 409
+    # Reassign subcategories to no parent
+    db.execute("UPDATE categories SET parent_id=NULL WHERE parent_id=(SELECT id FROM categories WHERE name=?)", (name,))
     db.execute("DELETE FROM categories WHERE name=?", (name,))
     log_event(db, "category_deleted",
               changed_by=session.get("username", ""),

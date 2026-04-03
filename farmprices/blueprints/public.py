@@ -14,17 +14,29 @@ from helpers import get_setting, get_pricing_config, sell_price
 bp = Blueprint("public", __name__)
 
 
+def _cat_tree(db):
+    rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()
+    parents = [dict(r) for r in rows if r["parent_id"] is None]
+    subs = {}
+    for r in rows:
+        if r["parent_id"] is not None:
+            subs.setdefault(r["parent_id"], []).append(dict(r))
+    for p in parents:
+        p["subcategories"] = subs.get(p["id"], [])
+    return parents
+
 @bp.route("/")
 @require_login
 def index():
-    db         = get_db()
-    shop_name  = get_setting("shop_name", "Tenbury Farm Supplies")
-    categories = [r["name"] for r in
-                  db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
-    is_admin   = session.get("role") == "admin"
+    db        = get_db()
+    shop_name = get_setting("shop_name", "Tenbury Farm Supplies")
+    tree      = _cat_tree(db)
+    cat_tree_json = [{"name": p["name"], "subs": [s["name"] for s in p["subcategories"]]} for p in tree]
+    is_admin  = session.get("role") == "admin"
     return render_template("lookup.html",
                            shop_name=shop_name,
-                           categories=categories,
+                           cat_tree=tree,
+                           cat_tree_json=cat_tree_json,
                            is_admin=is_admin,
                            username=session.get("username", ""))
 

@@ -46,8 +46,9 @@ CREATE TABLE IF NOT EXISTS suppliers (
 );
 
 CREATE TABLE IF NOT EXISTS categories (
-    id    INTEGER PRIMARY KEY AUTOINCREMENT,
-    name  TEXT NOT NULL UNIQUE
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    name      TEXT    NOT NULL UNIQUE,
+    parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL
 );
 
 CREATE TABLE IF NOT EXISTS units (
@@ -136,6 +137,11 @@ def init_db(app=None):
         db.execute("INSERT OR IGNORE INTO categories (name) VALUES (?)", (c,))
     for u in _DEFAULT_UNITS:
         db.execute("INSERT OR IGNORE INTO units (name) VALUES (?)", (u,))
+
+    # ── Migration: add parent_id to categories if missing ────────────────────
+    cat_cols = {row[1] for row in db.execute("PRAGMA table_info(categories)")}
+    if "parent_id" not in cat_cols:
+        db.execute("ALTER TABLE categories ADD COLUMN parent_id INTEGER REFERENCES categories(id) ON DELETE SET NULL")
 
     # ── Migration: add new columns to products if they don't exist ────────────
     existing_cols = {row[1] for row in db.execute("PRAGMA table_info(products)")}

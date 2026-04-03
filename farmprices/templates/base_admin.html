@@ -20,6 +20,10 @@
          class="{% if active_nav == 'products' %}active{% endif %}">
         <span class="nav-icon">📋</span> Products
       </a>
+      <a href="{{ url_for('admin.categories') }}"
+         class="{% if active_nav == 'categories' %}active{% endif %}">
+        <span class="nav-icon">📂</span> Categories
+      </a>
       <a href="{{ url_for('admin.suppliers') }}"
          class="{% if active_nav == 'suppliers' %}active{% endif %}">
         <span class="nav-icon">🏭</span> Suppliers

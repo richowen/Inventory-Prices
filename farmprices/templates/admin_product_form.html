@@ -4,21 +4,22 @@
 {% block topbar_actions %}
   <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">← Back to Products</a>
 {% endblock %}
-
 {% block head %}
 <style>
-  .form-card{max-width:760px}
-  .form-section-title{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);border-bottom:1px solid var(--grey-mid);padding-bottom:6px;margin-bottom:14px;margin-top:20px}
-  .form-section-title:first-child{margin-top:0}
+.form-card{max-width:760px}
+.form-section-title{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);border-bottom:1px solid var(--grey-mid);padding-bottom:6px;margin-bottom:14px;margin-top:20px}
+.form-section-title:first-child{margin-top:0}
 </style>
 {% endblock %}
-
 {% block content %}
 {% set active_nav = 'products' %}
 {% set p = preset if preset is defined else {} %}
+
+{% set cur_cat = product.category if product else p.get('category','') %}
 <div class="form-card">
   <form method="POST" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="category" id="category_hidden" value="{{ cur_cat }}">
 
     <div class="form-section-title">Product Details</div>
     <div class="form-grid">
@@ -26,19 +27,21 @@
         <label for="name">Product Name *</label>
         <input type="text" id="name" name="name" maxlength="120"
                value="{{ product.name if product else '' }}"
-               placeholder="e.g. Cattle Nuts 25kg"
-               required autofocus
-               autocomplete="off">
+               placeholder="e.g. Cattle Nuts 25kg" required autofocus autocomplete="off">
       </div>
       <div class="form-group">
-        <label for="category">Category *</label>
-        <select id="category" name="category" required>
-          {% for cat in categories %}
-            <option value="{{ cat }}"
-              {% if product and product.category == cat %}selected
-              {% elif not product and p.category == cat %}selected
-              {% endif %}>{{ cat }}</option>
+        <label for="parent_cat">Category *</label>
+        <select id="parent_cat" required onchange="updateSubCat()">
+          <option value="">— select —</option>
+          {% for parent in cat_tree %}
+            <option value="{{ parent.name }}" {% if parent.name == cur_parent %}selected{% endif %}>{{ parent.name }}</option>
           {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" id="subCatGroup" style="{% if not cur_sub and not (cur_parent and cat_tree|selectattr('name','equalto',cur_parent)|first is defined and (cat_tree|selectattr('name','equalto',cur_parent)|first).subcategories) %}display:none{% endif %}">
+        <label for="sub_cat">Subcategory</label>
+        <select id="sub_cat" onchange="updateCategoryHidden()">
+          <option value="">— use parent —</option>
         </select>
       </div>
       <div class="form-group">
@@ -47,16 +50,10 @@
           {% for u in units %}
             <option value="{{ u }}"
               {% if product and product.unit == u %}selected
-              {% elif not product and p.unit == u %}selected
+              {% elif not product and p.get('unit','') == u %}selected
               {% endif %}>{{ u }}</option>
           {% endfor %}
         </select>
-      </div>
-      <div class="form-group full-width">
-        <label for="barcode">Barcode (optional)</label>
-        <input type="text" id="barcode" name="barcode" maxlength="60"
-               value="{{ product.barcode if product else '' }}" placeholder="EAN-13, Code128, or internal code" autocomplete="off">
-        <span class="hint">Staff can scan this barcode on the lookup page</span>
       </div>
       <div class="form-group full-width">
         <label for="notes">Notes (optional)</label>
@@ -70,19 +67,13 @@
       <div class="form-group">
         <label for="supplier_name">Supplier Name</label>
         <input type="text" id="supplier_name" name="supplier_name" maxlength="120"
-               value="{{ product.supplier_name if product else p.supplier }}"
+               value="{{ product.supplier_name if product else p.get('supplier','') }}"
                placeholder="e.g. Mole Valley Farmers"
                list="supplier-suggestions" autocomplete="off">
         <datalist id="supplier-suggestions">
           {% for s in suppliers %}<option value="{{ s }}">{% endfor %}
         </datalist>
-        <span class="hint">Type to autocomplete · new names are saved automatically</span>
-      </div>
-      <div class="form-group">
-        <label for="supplier_tel">Supplier Phone</label>
-        <input type="text" id="supplier_tel" name="supplier_tel" maxlength="40"
-               value="{{ product.supplier_tel if product else p.tel }}"
-               placeholder="e.g. 01568 612345">
+        <span class="hint">Type to autocomplete · phone/email auto-filled from Suppliers</span>
       </div>
     </div>
 
@@ -99,7 +90,7 @@
       <div class="form-group">
         <label for="markup_pct">Markup % (optional)</label>
         <input type="number" id="markup_pct" name="markup_pct"
-               value="{{ product.markup_pct|int if product and product.markup_pct is not none else p.markup }}"
+               value="{{ product.markup_pct|int if product and product.markup_pct is not none else p.get('markup','') }}"
                step="1" min="0" max="999" placeholder="e.g. 35">
         <span class="hint">Leave blank to use the default from Settings</span>
       </div>
@@ -117,7 +108,7 @@
         <label for="quantity">Current Quantity</label>
         <input type="number" id="quantity" name="quantity" step="0.1" min="0"
                value="{{ product.quantity if product and product.quantity is not none else '' }}" placeholder="e.g. 24">
-        <span class="hint">Leave blank to disable stock tracking for this product</span>
+        <span class="hint">Leave blank to disable stock tracking</span>
       </div>
       <div class="form-group">
         <label for="reorder_threshold">Reorder Threshold</label>
@@ -143,38 +134,53 @@
       {% if product %}
         <button type="submit" name="submit_action" value="save" class="btn btn-primary">💾 Save Changes</button>
       {% else %}
-        <button type="submit" name="submit_action" value="add_next" class="btn btn-primary">
-          ➕ Save &amp; Add Next
-        </button>
-        <button type="submit" name="submit_action" value="save" class="btn btn-secondary">
-          Save &amp; Done
-        </button>
+        <button type="submit" name="submit_action" value="add_next" class="btn btn-primary">➕ Save &amp; Add Next</button>
+        <button type="submit" name="submit_action" value="save" class="btn btn-secondary">Save &amp; Done</button>
       {% endif %}
       <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
 {% endblock %}
-
 {% block scripts %}
 <script>
+const CAT_TREE = {{ cat_tree_json|tojson }};
+const curSub   = {{ cur_sub|tojson }};
+
+function updateSubCat(){
+  const parent=document.getElementById('parent_cat').value;
+  const sub=document.getElementById('sub_cat');
+  const grp=document.getElementById('subCatGroup');
+  const hidden=document.getElementById('category_hidden');
+  sub.innerHTML='<option value="">— use parent —</option>';
+  const node=CAT_TREE.find(p=>p.name===parent);
+  if(node&&node.subs.length){
+    node.subs.forEach(s=>{
+      const o=document.createElement('option');o.value=s;o.textContent=s;sub.appendChild(o);
+    });
+    grp.style.display='';
+    if(curSub&&node.subs.includes(curSub)){sub.value=curSub;}
+  } else {
+    grp.style.display='none';
+  }
+  updateCategoryHidden();
+}
+function updateCategoryHidden(){
+  const parent=document.getElementById('parent_cat').value;
+  const sub=document.getElementById('sub_cat').value;
+  document.getElementById('category_hidden').value=sub||parent;
+}
+
+// Init on load
+updateSubCat();
+
 const costInput=document.getElementById('cost_price'), markupInput=document.getElementById('markup_pct');
 const preview=document.getElementById('pricePreview'), previewEl=document.getElementById('previewPrice');
 function updatePreview(){
   const cost=parseFloat(costInput.value), markup=parseFloat(markupInput.value)||30;
-  if(!isNaN(cost)&&cost>0){ previewEl.textContent='£'+( cost*(1+markup/100) ).toFixed(2)+' per {{ (product.unit if product else "unit")|e }}'; preview.style.display='block'; }
+  if(!isNaN(cost)&&cost>0){previewEl.textContent='£'+(cost*(1+markup/100)).toFixed(2)+' per {{ (product.unit if product else "unit")|e }}';preview.style.display='block';}
   else preview.style.display='none';
 }
-costInput.addEventListener('input',updatePreview); markupInput.addEventListener('input',updatePreview); updatePreview();
-
-const supplierInput=document.getElementById('supplier_name'), telInput=document.getElementById('supplier_tel');
-supplierInput.addEventListener('change',()=>{
-  const name=supplierInput.value.trim();
-  if(!name||telInput.value.trim()) return;
-  fetch('/api/suppliers/suggest?q='+encodeURIComponent(name)).then(r=>r.json()).then(data=>{
-    const match=data.find(s=>s.name.toLowerCase()===name.toLowerCase());
-    if(match&&match.tel) telInput.value=match.tel;
-  });
-});
+costInput.addEventListener('input',updatePreview);markupInput.addEventListener('input',updatePreview);updatePreview();
 </script>
 {% endblock %}

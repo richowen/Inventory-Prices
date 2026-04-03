@@ -21,6 +21,12 @@
       -webkit-overflow-scrolling:touch; scrollbar-width:none;
     }
     .category-pills::-webkit-scrollbar { display:none; }
+    .sub-pills {
+      background:var(--green-dark); padding:6px 32px 10px;
+      display:flex; gap:6px; overflow-x:auto;
+      -webkit-overflow-scrolling:touch; scrollbar-width:none;
+    }
+    .sub-pills::-webkit-scrollbar { display:none; }
     .cat-pill {
       flex-shrink:0; padding:7px 16px; border-radius:20px;
       border:2px solid rgba(255,255,255,.4); background:transparent;
@@ -29,6 +35,14 @@
     }
     .cat-pill:hover { background:rgba(255,255,255,.15); color:white; border-color:rgba(255,255,255,.7); }
     .cat-pill.active { background:white; color:var(--green-dark); border-color:white; }
+    .sub-pill {
+      flex-shrink:0; padding:4px 12px; border-radius:14px;
+      border:1px solid rgba(255,255,255,.3); background:transparent;
+      color:rgba(255,255,255,.75); font-size:.8rem; font-weight:500;
+      cursor:pointer; transition:all .15s; white-space:nowrap;
+    }
+    .sub-pill:hover { background:rgba(255,255,255,.15); color:white; }
+    .sub-pill.active { background:rgba(255,255,255,.25); color:white; border-color:rgba(255,255,255,.7); }
     .result-card { border-left:4px solid var(--green-light); cursor:default; }
     .price-block { display:flex; flex-direction:column; align-items:flex-end; min-width:160px; gap:2px; }
     .sell-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-light); }
@@ -102,10 +116,11 @@
 
   <div class="category-pills" id="categoryPills">
     <button class="cat-pill active" data-cat="" onclick="selectCategory(this,'')">All</button>
-    {% for cat in categories %}
-    <button class="cat-pill" data-cat="{{ cat }}" onclick="selectCategory(this,'{{ cat }}')">{{ cat }}</button>
+    {% for parent in cat_tree %}
+    <button class="cat-pill" data-cat="{{ parent.name }}" onclick="selectCategory(this,'{{ parent.name }}')">{{ parent.name }}</button>
     {% endfor %}
   </div>
+  <div class="sub-pills" id="subPills" style="display:none"></div>
 
   <main class="results-section">
     <div class="results-count" id="resultsCount"></div>
@@ -119,13 +134,16 @@
 
   <script>
     const IS_ADMIN     = {{ 'true' if is_admin else 'false' }};
+    const CAT_TREE     = {{ cat_tree_json|tojson }};
     const searchInput  = document.getElementById('searchInput');
     const searchClear  = document.getElementById('searchClear');
+    const subPillsDiv  = document.getElementById('subPills');
     const resultsDiv   = document.getElementById('resultsContainer');
     const resultsCount = document.getElementById('resultsCount');
     let debounceTimer  = null;
     let lastQuery      = null;
     let activeCategory = '';
+    let activeParent   = '';
 
     function fmt(n) { return '£' + parseFloat(n).toFixed(2); }
     function escHtml(s) {
@@ -204,9 +222,41 @@
       }
       if (e.key.length===1) { barcodeBuffer+=e.key; clearTimeout(barcodeTimer); barcodeTimer=setTimeout(()=>{barcodeBuffer='';},100); }
     });
-    function selectCategory(btn,cat) {
+    function selectSub(btn, sub) {
+      document.querySelectorAll('.sub-pill').forEach(p=>p.classList.remove('active'));
+      btn.classList.add('active');
+      activeCategory = sub || activeParent;
+      lastQuery = null;
+      doSearch(searchInput.value, activeCategory);
+    }
+    function selectCategory(btn, cat) {
       document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('active'));
-      btn.classList.add('active'); activeCategory=cat; lastQuery=null; doSearch(searchInput.value,cat);
+      btn.classList.add('active');
+      activeParent   = cat;
+      activeCategory = cat;
+      lastQuery      = null;
+      // Build sub-pills
+      const node = CAT_TREE.find(p=>p.name===cat);
+      if (node && node.subs && node.subs.length) {
+        subPillsDiv.innerHTML = '';
+        const allBtn = document.createElement('button');
+        allBtn.className = 'sub-pill active';
+        allBtn.textContent = 'All ' + cat;
+        allBtn.onclick = () => selectSub(allBtn, cat);
+        subPillsDiv.appendChild(allBtn);
+        node.subs.forEach(s => {
+          const b = document.createElement('button');
+          b.className = 'sub-pill';
+          b.textContent = s;
+          b.onclick = () => selectSub(b, s);
+          subPillsDiv.appendChild(b);
+        });
+        subPillsDiv.style.display = 'flex';
+      } else {
+        subPillsDiv.style.display = 'none';
+        subPillsDiv.innerHTML = '';
+      }
+      doSearch(searchInput.value, cat);
     }
     searchInput.addEventListener('input',()=>{
       clearTimeout(debounceTimer); lastQuery=null;

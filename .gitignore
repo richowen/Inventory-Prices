@@ -45,3 +45,5 @@ uploads/
 # Backup files
 *.bak
 backups/
+# CocoIndex Code (ccc)
+/.cocoindex_code/

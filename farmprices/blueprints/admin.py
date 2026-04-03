@@ -60,6 +60,40 @@ def _enrich(products, default_markup: float, rounding: str) -> list:
             for p in products]
 
 
+def _cat_tree(db):
+    """Return list of parent dicts each with a 'subcategories' list."""
+    rows = db.execute("SELECT id,name,parent_id FROM categories ORDER BY name").fetchall()
+    parents = [dict(r) for r in rows if r["parent_id"] is None]
+    subs = {}
+    for r in rows:
+        if r["parent_id"] is not None:
+            subs.setdefault(r["parent_id"], []).append(dict(r))
+    for p in parents:
+        p["subcategories"] = subs.get(p["id"], [])
+    return parents
+
+
+def _js_tree(tree):
+    """Convert cat_tree to a JSON-serializable structure for the product form."""
+    return [{"id": p["id"], "name": p["name"],
+             "subs": [s["name"] for s in p["subcategories"]]} for p in tree]
+
+
+def _resolve_cat(tree, cat_name):
+    """Given a flat category name, return (cur_parent, cur_sub) for the form selectors."""
+    for p in tree:
+        if p["name"] == cat_name:
+            return cat_name, ""
+        for s in p["subcategories"]:
+            if s["name"] == cat_name:
+                return p["name"], cat_name
+    return "", ""
+
+
+def _flat_cats(db):
+    return [r["name"] for r in db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
+
+
 # ── Products list ─────────────────────────────────────────────────────────────
 
 @bp.route("")
@@ -81,19 +115,21 @@ def products():
         params += [f"%{search_q}%", f"%{search_q}%"]
     q += " ORDER BY name"
 
-    rows       = db.execute(q, params).fetchall()
-    categories = [r["name"] for r in
-                  db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
-    enriched   = _enrich(rows, default_markup, rounding)
-    currency   = get_setting("currency", "£")
+    rows     = db.execute(q, params).fetchall()
+    enriched = _enrich(rows, default_markup, rounding)
+    currency = get_setting("currency", "£")
+    tree     = _cat_tree(db)
+    suppliers = [r["name"] for r in db.execute("SELECT name FROM suppliers ORDER BY name").fetchall()]
 
     return render_template("admin_products.html",
                            products=enriched,
-                           categories=categories,
+                           cat_tree=tree,
+                           categories=_flat_cats(db),
                            category_filter=category_filter,
                            search_q=search_q,
                            default_markup=default_markup,
                            currency=currency,
+                           suppliers=suppliers,
                            shop_name=get_setting("shop_name"))
 
 
@@ -102,76 +138,58 @@ def products():
 @bp.route("/products/add", methods=["GET", "POST"])
 @require_admin
 def add_product():
-    db = get_db()
-    categories = [r["name"] for r in
-                  db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
-    units      = [r["name"] for r in
-                  db.execute("SELECT name FROM units ORDER BY name").fetchall()]
-    suppliers  = [r["name"] for r in
-                  db.execute("SELECT name FROM suppliers ORDER BY name").fetchall()]
+    db         = get_db()
+    categories = _flat_cats(db)
+    units      = [r["name"] for r in db.execute("SELECT name FROM units ORDER BY name").fetchall()]
+    suppliers  = [r["name"] for r in db.execute("SELECT name FROM suppliers ORDER BY name").fetchall()]
+    tree       = _cat_tree(db)
 
     if request.method == "POST":
         name     = request.form.get("name", "").strip()[:_MAX_NAME]
         category = request.form.get("category", "").strip()
         unit     = request.form.get("unit", "").strip()
         supplier = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
-        tel      = request.form.get("supplier_tel", "").strip()[:40]
-        barcode  = request.form.get("barcode", "").strip()[:_MAX_BARCODE]
         notes    = request.form.get("notes", "").strip()[:_MAX_NOTES]
+        # Auto-fill tel from suppliers table
+        tel = ""
+        if supplier:
+            sup_row = db.execute("SELECT tel FROM suppliers WHERE name=? COLLATE NOCASE", (supplier,)).fetchone()
+            if sup_row:
+                tel = sup_row["tel"] or ""
 
-        if not name:
-            flash("Product name is required.", "error")
+        def _err(msg):
+            flash(msg, "error")
             return render_template("admin_product_form.html",
                                    product=None, action="Add",
                                    categories=categories, units=units,
-                                   suppliers=suppliers,
+                                   suppliers=suppliers, cat_tree=tree,
+                                   cat_tree_json=_js_tree(tree),
+                                   cur_parent="", cur_sub="",
                                    shop_name=get_setting("shop_name"))
 
-        # Validate category and unit exist
-        if category not in [c for c in categories]:
-            flash("Invalid category.", "error")
-            return render_template("admin_product_form.html",
-                                   product=None, action="Add",
-                                   categories=categories, units=units,
-                                   suppliers=suppliers,
-                                   shop_name=get_setting("shop_name"))
-        if unit not in [u for u in units]:
-            flash("Invalid unit.", "error")
-            return render_template("admin_product_form.html",
-                                   product=None, action="Add",
-                                   categories=categories, units=units,
-                                   suppliers=suppliers,
-                                   shop_name=get_setting("shop_name"))
+        if not name: return _err("Product name is required.")
+        if category not in categories: return _err("Invalid category.")
+        if unit not in units: return _err("Invalid unit.")
 
         try:
             cost = float(request.form["cost_price"])
-            if cost < 0:
-                raise ValueError
+            if cost < 0: raise ValueError
         except (TypeError, ValueError):
-            flash("Invalid cost price.", "error")
-            return render_template("admin_product_form.html",
-                                   product=None, action="Add",
-                                   categories=categories, units=units,
-                                   suppliers=suppliers,
-                                   shop_name=get_setting("shop_name"))
+            return _err("Invalid cost price.")
 
         markup_str = request.form.get("markup_pct", "").strip()
         try:
             markup = float(markup_str) if markup_str else None
-            if markup is not None and markup < 0:
-                markup = 0.0
+            if markup is not None and markup < 0: markup = 0.0
         except (TypeError, ValueError):
             markup = None
 
-        qty_str = request.form.get("quantity", "").strip()
         try:
-            qty = float(qty_str) if qty_str else None
+            qty = float(request.form.get("quantity","").strip()) if request.form.get("quantity","").strip() else None
         except (TypeError, ValueError):
             qty = None
-
-        reorder_str = request.form.get("reorder_threshold", "").strip()
         try:
-            reorder = float(reorder_str) if reorder_str else None
+            reorder = float(request.form.get("reorder_threshold","").strip()) if request.form.get("reorder_threshold","").strip() else None
         except (TypeError, ValueError):
             reorder = None
 
@@ -182,48 +200,39 @@ def add_product():
                 quantity, reorder_threshold, last_updated)
                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (name, category, unit, supplier, tel, cost, markup, notes,
-             barcode, qty, reorder, date.today().isoformat())
+             "", qty, reorder, date.today().isoformat())
         )
         new_id = cursor.lastrowid
-        log_event(db, "product_added",
-                  product_id=new_id, product_name=name,
+        log_event(db, "product_added", product_id=new_id, product_name=name,
                   changed_by=_current_user(),
                   new_data={"name": name, "category": category, "unit": unit,
-                            "cost_price": cost, "markup_pct": markup,
-                            "barcode": barcode, "quantity": qty})
+                            "cost_price": cost, "markup_pct": markup, "quantity": qty})
         new_supplier = _auto_save_supplier(db, supplier, tel)
         db.commit()
         msg = f"'{name}' added."
         if new_supplier:
             msg += f" Supplier '{supplier}' saved."
         flash(msg, "success")
-
-        # "Save & Add Next" — redirect back to the blank add form with the
-        # last-used category/unit/supplier/markup pre-filled so repetitive
-        # entries (same supplier, same category) are as fast as possible.
         if request.form.get("submit_action") == "add_next":
             return redirect(url_for("admin.add_product",
-                                    preset_category=category,
-                                    preset_unit=unit,
-                                    preset_supplier=supplier,
-                                    preset_tel=tel,
-                                    preset_markup=markup_str))
-
+                                    preset_category=category, preset_unit=unit,
+                                    preset_supplier=supplier, preset_markup=markup_str))
         return redirect(url_for("admin.products"))
 
-    # Pre-fill values carried over from a previous "Save & Add Next"
     preset = {
         "category": request.args.get("preset_category", ""),
         "unit":     request.args.get("preset_unit", ""),
         "supplier": request.args.get("preset_supplier", ""),
-        "tel":      request.args.get("preset_tel", ""),
         "markup":   request.args.get("preset_markup", ""),
     }
-
+    cur_cat = preset["category"]
+    cur_parent, cur_sub = _resolve_cat(tree, cur_cat)
     return render_template("admin_product_form.html",
                            product=None, action="Add",
                            categories=categories, units=units,
-                           suppliers=suppliers,
+                           suppliers=suppliers, cat_tree=tree,
+                           cat_tree_json=_js_tree(tree),
+                           cur_parent=cur_parent, cur_sub=cur_sub,
                            preset=preset,
                            shop_name=get_setting("shop_name"))
 
@@ -239,38 +248,42 @@ def edit_product(pid):
         flash("Product not found.", "error")
         return redirect(url_for("admin.products"))
 
-    categories = [r["name"] for r in
-                  db.execute("SELECT name FROM categories ORDER BY name").fetchall()]
-    units      = [r["name"] for r in
-                  db.execute("SELECT name FROM units ORDER BY name").fetchall()]
-    suppliers  = [r["name"] for r in
-                  db.execute("SELECT name FROM suppliers ORDER BY name").fetchall()]
+    categories = _flat_cats(db)
+    units      = [r["name"] for r in db.execute("SELECT name FROM units ORDER BY name").fetchall()]
+    suppliers  = [r["name"] for r in db.execute("SELECT name FROM suppliers ORDER BY name").fetchall()]
+    tree       = _cat_tree(db)
 
     if request.method == "POST":
-        name     = request.form.get("name", "").strip()[:_MAX_NAME]
-        category = request.form.get("category", "").strip()
-        unit     = request.form.get("unit", "").strip()
-        supplier = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
-        tel      = request.form.get("supplier_tel", "").strip()[:40]
-        barcode  = request.form.get("barcode", "").strip()[:_MAX_BARCODE]
-        notes    = request.form.get("notes", "").strip()[:_MAX_NOTES]
+        name        = request.form.get("name", "").strip()[:_MAX_NAME]
+        category    = request.form.get("category", "").strip()
+        unit        = request.form.get("unit", "").strip()
+        supplier    = request.form.get("supplier_name", "").strip()[:_MAX_NAME]
+        notes       = request.form.get("notes", "").strip()[:_MAX_NOTES]
         change_note = request.form.get("change_note", "").strip()[:_MAX_NOTES]
+        barcode     = product["barcode"] or ""  # keep existing barcode
+        # Auto-fill tel from suppliers table
+        tel = ""
+        if supplier:
+            sup_row = db.execute("SELECT tel FROM suppliers WHERE name=? COLLATE NOCASE", (supplier,)).fetchone()
+            if sup_row:
+                tel = sup_row["tel"] or ""
+        # Fall back to existing tel on product if supplier unchanged
+        if not tel and supplier == product["supplier_name"]:
+            tel = product["supplier_tel"] or ""
 
         if not name:
             flash("Product name is required.", "error")
             return redirect(url_for("admin.edit_product", pid=pid))
-
-        if category not in [c for c in categories]:
+        if category not in categories:
             flash("Invalid category.", "error")
             return redirect(url_for("admin.edit_product", pid=pid))
-        if unit not in [u for u in units]:
+        if unit not in units:
             flash("Invalid unit.", "error")
             return redirect(url_for("admin.edit_product", pid=pid))
 
         try:
             new_cost = float(request.form["cost_price"])
-            if new_cost < 0:
-                raise ValueError
+            if new_cost < 0: raise ValueError
         except (TypeError, ValueError):
             flash("Invalid cost price.", "error")
             return redirect(url_for("admin.edit_product", pid=pid))
@@ -278,31 +291,25 @@ def edit_product(pid):
         markup_str = request.form.get("markup_pct", "").strip()
         try:
             markup = float(markup_str) if markup_str else None
-            if markup is not None and markup < 0:
-                markup = 0.0
+            if markup is not None and markup < 0: markup = 0.0
         except (TypeError, ValueError):
             markup = None
 
-        qty_str = request.form.get("quantity", "").strip()
         try:
-            qty = float(qty_str) if qty_str else None
+            qty = float(request.form.get("quantity","").strip()) if request.form.get("quantity","").strip() else None
         except (TypeError, ValueError):
             qty = None
-
-        reorder_str = request.form.get("reorder_threshold", "").strip()
         try:
-            reorder = float(reorder_str) if reorder_str else None
+            reorder = float(request.form.get("reorder_threshold","").strip()) if request.form.get("reorder_threshold","").strip() else None
         except (TypeError, ValueError):
             reorder = None
 
         old_snap = product_snapshot(product)
-        new_snap = {
-            "name": name, "category": category, "unit": unit,
-            "supplier_name": supplier, "supplier_tel": tel,
-            "cost_price": new_cost, "markup_pct": markup,
-            "notes": notes, "barcode": barcode,
-            "quantity": qty, "reorder_threshold": reorder
-        }
+        new_snap = {"name": name, "category": category, "unit": unit,
+                    "supplier_name": supplier, "supplier_tel": tel,
+                    "cost_price": new_cost, "markup_pct": markup,
+                    "notes": notes, "barcode": barcode,
+                    "quantity": qty, "reorder_threshold": reorder}
 
         old_cost = product["cost_price"]
         if abs(new_cost - old_cost) > 0.001:
@@ -314,25 +321,18 @@ def edit_product(pid):
                  datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
             )
 
-        diff_parts = []
-        for field in old_snap:
-            ov, nv = old_snap.get(field), new_snap.get(field)
-            if str(ov) != str(nv):
-                diff_parts.append(f"{field}: {ov!r} → {nv!r}")
-        diff_note = "; ".join(diff_parts) if diff_parts else "no changes"
-
-        log_event(db, "product_edited",
-                  product_id=pid, product_name=name,
+        diff_parts = [f"{f}: {old_snap.get(f)!r} → {new_snap.get(f)!r}"
+                      for f in old_snap if str(old_snap.get(f)) != str(new_snap.get(f))]
+        log_event(db, "product_edited", product_id=pid, product_name=name,
                   changed_by=_current_user(),
-                  notes=change_note or diff_note,
+                  notes=change_note or ("; ".join(diff_parts) or "no changes"),
                   old_data=old_snap, new_data=new_snap)
 
         db.execute(
             """UPDATE products SET
                name=?, category=?, unit=?, supplier_name=?, supplier_tel=?,
                cost_price=?, markup_pct=?, notes=?, barcode=?,
-               quantity=?, reorder_threshold=?, last_updated=?
-               WHERE id=?""",
+               quantity=?, reorder_threshold=?, last_updated=? WHERE id=?""",
             (name, category, unit, supplier, tel, new_cost, markup, notes,
              barcode, qty, reorder, date.today().isoformat(), pid)
         )
@@ -344,10 +344,13 @@ def edit_product(pid):
         flash(msg, "success")
         return redirect(url_for("admin.products"))
 
+    cur_parent, cur_sub = _resolve_cat(tree, product["category"] or "")
     return render_template("admin_product_form.html",
                            product=dict(product), action="Edit",
                            categories=categories, units=units,
-                           suppliers=suppliers,
+                           suppliers=suppliers, cat_tree=tree,
+                           cat_tree_json=_js_tree(tree),
+                           cur_parent=cur_parent, cur_sub=cur_sub,
                            shop_name=get_setting("shop_name"))
 
 
@@ -1071,19 +1074,12 @@ def add_supplier():
     tel   = request.form.get("tel",   "").strip()[:40]
     email = request.form.get("email", "").strip()[:100]
     notes = request.form.get("notes", "").strip()[:_MAX_NOTES]
-
     if not name:
         flash("Supplier name is required.", "error")
         return redirect(url_for("admin.suppliers"))
-
     try:
-        db.execute(
-            "INSERT INTO suppliers (name, tel, email, notes) VALUES (?,?,?,?)",
-            (name, tel, email, notes)
-        )
-        log_event(db, "supplier_added",
-                  changed_by=_current_user(),
-                  notes=f"Supplier '{name}' added")
+        db.execute("INSERT INTO suppliers (name, tel, email, notes) VALUES (?,?,?,?)", (name, tel, email, notes))
+        log_event(db, "supplier_added", changed_by=_current_user(), notes=f"Supplier '{name}' added")
         db.commit()
         flash(f"Supplier '{name}' added.", "success")
     except Exception:
@@ -1141,3 +1137,85 @@ def delete_supplier(sid):
         db.commit()
         flash(f"Supplier '{supplier['name']}' deleted.", "success")
     return redirect(url_for("admin.suppliers"))
+
+
+# ── Categories management ─────────────────────────────────────────────────────
+
+@bp.route("/categories")
+@require_admin
+def categories():
+    db = get_db()
+    return render_template("admin_categories.html",
+                           parents=_cat_tree(db),
+                           shop_name=get_setting("shop_name"))
+
+
+# ── Bulk select actions ───────────────────────────────────────────────────────
+
+@bp.route("/products/bulk_action", methods=["POST"])
+@require_admin
+def bulk_action():
+    db      = get_db()
+    ids_raw = request.form.getlist("ids")
+    ids = [int(i) for i in ids_raw if str(i).strip().isdigit()]
+    if not ids:
+        flash("No products selected.", "error")
+        return redirect(url_for("admin.products"))
+    action = request.form.get("bulk_action_type", "")
+    if action == "delete":
+        count = 0
+        for pid in ids:
+            p = db.execute("SELECT * FROM products WHERE id=? AND active=1", (pid,)).fetchone()
+            if p:
+                db.execute("UPDATE products SET active=0 WHERE id=?", (pid,))
+                log_event(db, "product_deleted", product_id=pid, product_name=p["name"],
+                          changed_by=_current_user(), notes="Bulk delete", old_data=product_snapshot(p))
+                count += 1
+        db.commit()
+        flash(f"{count} product(s) removed.", "success")
+    elif action == "set_category":
+        cat = request.form.get("bulk_category_val", "").strip()
+        if cat not in _flat_cats(db):
+            flash("Invalid category.", "error")
+            return redirect(url_for("admin.products"))
+        ph = ",".join("?" * len(ids))
+        db.execute(f"UPDATE products SET category=?,last_updated=date('now') WHERE id IN ({ph})", [cat]+ids)
+        log_event(db, "product_edited", changed_by=_current_user(),
+                  notes=f"Bulk category → {cat!r} for {len(ids)} products")
+        db.commit()
+        flash(f"Category updated for {len(ids)} product(s).", "success")
+    elif action == "set_supplier":
+        sup = request.form.get("bulk_supplier_val", "").strip()
+        tel = ""
+        if sup:
+            row = db.execute("SELECT tel FROM suppliers WHERE name=? COLLATE NOCASE", (sup,)).fetchone()
+            if row: tel = row["tel"] or ""
+        ph = ",".join("?" * len(ids))
+        db.execute(f"UPDATE products SET supplier_name=?,supplier_tel=?,last_updated=date('now') WHERE id IN ({ph})",
+                   [sup, tel]+ids)
+        log_event(db, "product_edited", changed_by=_current_user(),
+                  notes=f"Bulk supplier → {sup!r} for {len(ids)} products")
+        db.commit()
+        flash(f"Supplier updated for {len(ids)} product(s).", "success")
+    elif action in ("set_markup", "increase_markup", "decrease_markup"):
+        try:
+            pct = float(request.form.get("bulk_markup_pct", "0"))
+        except (TypeError, ValueError):
+            flash("Invalid percentage.", "error")
+            return redirect(url_for("admin.products"))
+        default_markup, _ = get_pricing_config()
+        for pid in ids:
+            p = db.execute("SELECT * FROM products WHERE id=?", (pid,)).fetchone()
+            if not p: continue
+            old_m = p["markup_pct"]
+            base  = old_m if old_m is not None else default_markup
+            new_m = pct if action == "set_markup" else (base+pct if action == "increase_markup" else max(0.0, base-pct))
+            db.execute("UPDATE products SET markup_pct=?,last_updated=date('now') WHERE id=?", (new_m, pid))
+            log_event(db, "product_edited", product_id=pid, product_name=p["name"],
+                      changed_by=_current_user(), notes=f"Bulk markup {action}: {old_m}% → {new_m}%",
+                      old_data={"markup_pct": old_m}, new_data={"markup_pct": new_m})
+        db.commit()
+        flash(f"Markup updated for {len(ids)} product(s).", "success")
+    else:
+        flash("Unknown action.", "error")
+    return redirect(url_for("admin.products"))

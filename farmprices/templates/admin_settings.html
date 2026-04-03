@@ -59,24 +59,6 @@
   </div>
 
   <div class="settings-card">
-    <h3>Product Categories</h3>
-    <div class="tag-list" id="cat-list">
-      {% for cat in categories %}
-      <span class="tag" data-name="{{ cat }}">
-        {{ cat }}
-        <button class="tag-del" onclick="deleteCategory(this)" title="Remove">×</button>
-      </span>
-      {% endfor %}
-    </div>
-    <div class="add-tag-row">
-      <input type="text" class="add-tag-input" id="new-cat-input" placeholder="New category name" maxlength="60"
-             onkeydown="if(event.key==='Enter'){addCategory();event.preventDefault();}">
-      <button class="btn btn-primary btn-sm" onclick="addCategory()">+ Add</button>
-    </div>
-    <div class="tag-error" id="cat-error"></div>
-  </div>
-
-  <div class="settings-card">
     <h3>Units of Sale</h3>
     <div class="tag-list" id="unit-list">
       {% for unit in units %}

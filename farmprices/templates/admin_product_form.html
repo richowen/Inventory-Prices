@@ -6,9 +6,22 @@
 {% endblock %}
 {% block head %}
 <style>
-.form-card{max-width:760px}
-.form-section-title{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);border-bottom:1px solid var(--grey-mid);padding-bottom:6px;margin-bottom:14px;margin-top:20px}
+.product-form-layout{display:flex;gap:20px;align-items:flex-start;}
+.form-card{flex:0 0 560px;min-width:0;}
+.cat-cheatsheet{flex:1;min-width:300px;position:sticky;top:16px;background:#fff;border:1px solid var(--grey-mid);border-radius:var(--radius);padding:12px 14px;font-size:.78rem;}
+.cs-columns{columns:2;column-gap:10px;}
+.cs-group{break-inside:avoid;margin-bottom:6px;}
+.cat-cheatsheet h4{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);margin:0 0 10px;border-bottom:1px solid var(--grey-mid);padding-bottom:6px;}
+.cs-parent{font-weight:700;color:var(--text-dark);padding:3px 4px;border-radius:3px;cursor:pointer;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cs-parent:hover{background:var(--amber-pale);color:var(--amber);}
+.cs-sub{display:block;padding:2px 4px 2px 14px;color:var(--text-light);cursor:pointer;border-radius:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cs-sub:hover{background:var(--amber-pale);color:var(--amber);}
+.form-section-title{font-size:.82rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-light);border-bottom:1px solid var(--grey-mid);padding-bottom:4px;margin-bottom:10px;margin-top:14px}
 .form-section-title:first-child{margin-top:0}
+.measure-row{display:flex;gap:8px;align-items:flex-end;width:100%;}
+.measure-row>div{flex:0 0 auto;min-width:0;}
+#measure_val_group{flex:0 0 110px;}
+#measure_val_group input{width:100%;box-sizing:border-box;}
 </style>
 {% endblock %}
 {% block content %}
@@ -16,6 +29,7 @@
 {% set p = preset if preset is defined else {} %}
 
 {% set cur_cat = product.category if product else p.get('category','') %}
+<div class="product-form-layout">
 <div class="form-card">
   <form method="POST" autocomplete="off">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -44,31 +58,35 @@
           <option value="">— use parent —</option>
         </select>
       </div>
-      <div class="form-group">
-        <label for="unit">Unit of Sale *</label>
-        <select id="unit" name="unit" required>
-          {% for u in units %}
-            <option value="{{ u }}"
-              {% if product and product.unit == u %}selected
-              {% elif not product and p.get('unit','') == u %}selected
-              {% endif %}>{{ u }}</option>
-          {% endfor %}
-        </select>
+      <div class="form-group full-width">
+        <div class="measure-row">
+          <div>
+            <label for="unit">Unit of Sale *</label>
+            <select id="unit" name="unit" required>
+              {% for u in units %}
+                <option value="{{ u }}"
+                  {% if product and product.unit == u %}selected
+                  {% elif not product and p.get('unit','') == u %}selected
+                  {% endif %}>{{ u }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label for="measure_type">Measure</label>
+            <select id="measure_type" onchange="onMeasureType()">
+              <option value="">— none —</option>
+              <option value="weight">Weight (kg)</option>
+              <option value="volume">Volume (L)</option>
+            </select>
+          </div>
+          <div id="measure_val_group" style="display:none">
+            <label for="measure_val" id="measure_val_label">Value</label>
+            <input type="number" id="measure_val" step="0.001" min="0" placeholder="e.g. 25" autocomplete="off">
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label for="weight_kg">Weight (kg, optional)</label>
-        <input type="number" id="weight_kg" name="weight_kg" step="0.001" min="0"
-               value="{{ product.weight_kg if product and product.weight_kg is not none else '' }}"
-               placeholder="e.g. 25">
-        <span class="hint">Solid products — e.g. 25 for a 25kg bag</span>
-      </div>
-      <div class="form-group">
-        <label for="volume_litres">Volume (litres, optional)</label>
-        <input type="number" id="volume_litres" name="volume_litres" step="0.001" min="0"
-               value="{{ product.volume_litres if product and product.volume_litres is not none else '' }}"
-               placeholder="e.g. 5">
-        <span class="hint">Liquid products — e.g. 5 for a 5L container</span>
-      </div>
+      <input type="hidden" id="weight_kg" name="weight_kg">
+      <input type="hidden" id="volume_litres" name="volume_litres">
       <div class="form-group full-width">
         <label for="notes">Notes (optional)</label>
         <input type="text" id="notes" name="notes" maxlength="500"
@@ -116,22 +134,6 @@
       <span style="font-size:.8rem;color:#888;margin-left:8px">(before rounding rule)</span>
     </div>
 
-    <div class="form-section-title">Stock Tracking (optional)</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label for="quantity">Current Quantity</label>
-        <input type="number" id="quantity" name="quantity" step="0.1" min="0"
-               value="{{ product.quantity if product and product.quantity is not none else '' }}" placeholder="e.g. 24">
-        <span class="hint">Leave blank to disable stock tracking</span>
-      </div>
-      <div class="form-group">
-        <label for="reorder_threshold">Reorder Threshold</label>
-        <input type="number" id="reorder_threshold" name="reorder_threshold" step="0.1" min="0"
-               value="{{ product.reorder_threshold if product and product.reorder_threshold is not none else '' }}" placeholder="e.g. 5">
-        <span class="hint">Show low-stock warning when quantity ≤ this</span>
-      </div>
-    </div>
-
     {% if product %}
     <div class="form-section-title">Change Log (optional)</div>
     <div style="background:var(--amber-pale);padding:16px;border-radius:8px;border:1px solid #ffe082">
@@ -154,6 +156,21 @@
       <a href="{{ url_for('admin.products') }}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
+</div>
+
+<aside class="cat-cheatsheet">
+  <h4><i class="bi bi-diagram-3"></i> Categories</h4>
+  <div class="cs-columns">
+  {% for parent in cat_tree %}
+  <div class="cs-group">
+    <span class="cs-parent" onclick="csSelect('{{ parent.name|e }}','')">{{ parent.name }}</span>
+    {% for s in parent.subcategories %}
+    <span class="cs-sub" onclick="csSelect('{{ parent.name|e }}','{{ s.name|e }}')">↳ {{ s.name }}</span>
+    {% endfor %}
+  </div>
+  {% endfor %}
+  </div>
+</aside>
 </div>
 {% endblock %}
 {% block scripts %}
@@ -183,6 +200,75 @@ function updateCategoryHidden(){
   const parent=document.getElementById('parent_cat').value;
   const sub=document.getElementById('sub_cat').value;
   document.getElementById('category_hidden').value=sub||parent;
+}
+
+// ── Measure type / weight / volume ──
+var WEIGHT_UNITS=['kg','g','tonne','t','lb','lbs','stone','oz'];
+var VOLUME_UNITS=['litre','litres','liter','liters','l','ml','gallon','gallons','pint','pints','fl oz','floz'];
+var initWeight='{{ product.weight_kg if product and product.weight_kg is not none else "" }}';
+var initVolume='{{ product.volume_litres if product and product.volume_litres is not none else "" }}';
+
+function onMeasureType(){
+  var t=document.getElementById('measure_type').value;
+  var grp=document.getElementById('measure_val_group');
+  var lbl=document.getElementById('measure_val_label');
+  var inp=document.getElementById('measure_val');
+  if(t==='weight'){lbl.textContent='kg';grp.style.display='';inp.placeholder='e.g. 25';inp.focus();}
+  else if(t==='volume'){lbl.textContent='litres';grp.style.display='';inp.placeholder='e.g. 5';inp.focus();}
+  else{grp.style.display='none';inp.value='';}
+}
+
+function unitToMeasure(u){
+  var lc=(u||'').toLowerCase().trim();
+  if(WEIGHT_UNITS.some(function(w){return lc===w||lc.startsWith(w);}))return 'weight';
+  if(VOLUME_UNITS.some(function(v){return lc===v||lc.startsWith(v);}))return 'volume';
+  return '';
+}
+
+document.getElementById('unit').addEventListener('change',function(){
+  var suggested=unitToMeasure(this.value);
+  if(suggested){document.getElementById('measure_type').value=suggested;onMeasureType();}
+});
+
+// Write hidden fields on submit
+document.querySelector('form').addEventListener('submit',function(){
+  var t=document.getElementById('measure_type').value;
+  var v=document.getElementById('measure_val').value;
+  document.getElementById('weight_kg').value=(t==='weight'&&v)?v:'';
+  document.getElementById('volume_litres').value=(t==='volume'&&v)?v:'';
+});
+
+// Init measure fields from existing product data
+(function(){
+  if(initWeight){
+    document.getElementById('measure_type').value='weight';
+    document.getElementById('measure_val').value=initWeight;
+    onMeasureType();
+  } else if(initVolume){
+    document.getElementById('measure_type').value='volume';
+    document.getElementById('measure_val').value=initVolume;
+    onMeasureType();
+  } else {
+    var suggested=unitToMeasure(document.getElementById('unit').value);
+    if(suggested){document.getElementById('measure_type').value=suggested;onMeasureType();}
+  }
+})();
+
+// ── Cheatsheet click handler ──
+function csSelect(parent,sub){
+  var ps=document.getElementById('parent_cat');
+  ps.value=parent;
+  updateSubCat();
+  if(sub){
+    var ss=document.getElementById('sub_cat');
+    ss.value=sub;
+    updateCategoryHidden();
+  }
+  // Highlight active in cheatsheet
+  document.querySelectorAll('.cs-parent,.cs-sub').forEach(function(el){el.style.background='';el.style.color='';});
+  var target=sub?'[onclick="csSelect(\''+parent.replace(/'/g,"\\'")+"','"+sub.replace(/'/g,"\\'")+'\')"]':'[onclick="csSelect(\''+parent.replace(/'/g,"\\'")+"','')\"" +']';
+  var el=document.querySelector(target);
+  if(el){el.style.background='var(--amber-pale)';el.style.color='var(--amber)';}
 }
 
 // Init on load

@@ -96,6 +96,9 @@ def labels():
     currency                 = get_setting("currency", "£")
     cat_filter               = request.args.get("category", "")
     sup_filter               = request.args.get("supplier", "")
+    search_q                 = request.args.get("q", "").strip()
+    product_id               = request.args.get("product", "")
+    autoprint                = request.args.get("autoprint", "")
 
     tree = _cat_tree(db)
     cat_names = []
@@ -116,12 +119,19 @@ def labels():
 
     q      = "SELECT * FROM products WHERE active=1"
     params = []
-    if cat_names:
-        q += " AND category IN ({})".format(",".join("?"*len(cat_names)))
-        params.extend(cat_names)
-    if sup_filter:
-        q += " AND supplier_name=?"
-        params.append(sup_filter)
+    if product_id:
+        q += " AND id=?"
+        params.append(product_id)
+    else:
+        if cat_names:
+            q += " AND category IN ({})".format(",".join("?"*len(cat_names)))
+            params.extend(cat_names)
+        if sup_filter:
+            q += " AND supplier_name=?"
+            params.append(sup_filter)
+        if search_q:
+            q += " AND (name LIKE ? OR barcode LIKE ?)"
+            params.extend([f"%{search_q}%", f"%{search_q}%"])
     q += " ORDER BY category, name"
 
     rows = db.execute(q, params).fetchall()
@@ -153,9 +163,11 @@ def labels():
                            cat_tree=tree,
                            cat_filter=cat_filter,
                            sup_filter=sup_filter,
+                           search_q=search_q,
                            suppliers=suppliers,
                            shop_name=shop_name,
                            currency=currency,
+                           autoprint=autoprint,
                            generated=date.today().strftime("%d %b %Y"),
                            active_nav='labels',
                            current_username=session.get("username",""),

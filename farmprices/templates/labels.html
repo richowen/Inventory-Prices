@@ -57,6 +57,8 @@
 <div class="ltoolbar no-print">
   <!-- Filter row -->
   <form method="GET" id="filterForm" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+    <input type="text" name="q" placeholder="Search product…" value="{{ search_q }}" style="font-size:.8rem;padding:4px 8px;border:1px solid #aaa;border-radius:3px;width:160px;" autocomplete="off">
+    <button type="submit" style="font-size:.8rem;padding:4px 8px;border:1px solid #aaa;border-radius:3px;background:#fff;cursor:pointer;">🔍</button>
     <select name="category" onchange="document.getElementById('filterForm').submit()">
       <option value="">All Categories</option>
       {% for p in cat_tree %}
@@ -74,6 +76,7 @@
       {% endfor %}
     </select>
     {% endif %}
+    {% if search_q or cat_filter or sup_filter %}<a href="{{ url_for('public.labels') }}" style="font-size:.8rem;padding:4px 8px;border:1px solid #aaa;border-radius:3px;background:#fff;cursor:pointer;text-decoration:none;color:#333;">✕ Clear</a>{% endif %}
   </form>
   <div class="sep"></div>
   <!-- Preset bar -->
@@ -136,7 +139,7 @@
   <label><input type="checkbox" id="tog-shop" checked onchange="tog('h-shop');autoSave()"> Shop name</label>
 </div>
 
-<div class="labels-grid" id="grid">
+<div class="labels-grid" id="grid" data-autoprint="{{ '1' if autoprint else '' }}">
   {% for p in products %}
   <div class="label-card">
     <div class="label-top">
@@ -262,6 +265,9 @@ function deletePreset(){
   document.getElementById('presetName').value='';
   refreshSelect();
 }
+
+// Auto-print if triggered from admin products page
+if(grid.dataset.autoprint==='1'){setTimeout(function(){window.print();},350);}
 
 // Init: load first saved style if any, else auto-saved state, else defaults
 (function(){

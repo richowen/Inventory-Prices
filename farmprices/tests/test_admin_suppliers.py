@@ -53,35 +53,35 @@ def test_delete_supplier_no_products(app, admin_client):
 
 def test_delete_supplier_with_products(app, admin_client):
     admin_client.post("/admin/suppliers/add",
-                      data={"name":"BlockedSup","tel":"","email":"","notes":""},
+                      data={"name":"Blocked Sup","tel":"","email":"","notes":""},
                       follow_redirects=True)
     admin_client.post("/admin/products/add",
-                      data={"name":"BlockedSupProd","category":"Other","unit":"each",
+                      data={"name":"Blocked Sup Prod","category":"Other","unit":"each",
                             "cost_price":"1.00","markup_pct":"","notes":"","barcode":"",
-                            "supplier_name":"BlockedSup","quantity":"","reorder_threshold":"",
+                            "supplier_name":"Blocked Sup","quantity":"","reorder_threshold":"",
                             "weight_kg":"","volume_litres":""})
     with app.app_context():
         from db import get_db
-        sid = get_db().execute("SELECT id FROM suppliers WHERE name='BlockedSup'").fetchone()["id"]
+        sid = get_db().execute("SELECT id FROM suppliers WHERE name='Blocked Sup'").fetchone()["id"]
     r = admin_client.post(f"/admin/suppliers/{sid}/delete", follow_redirects=True)
     assert b"Cannot delete" in r.data
 
 def test_supplier_product_count(app, admin_client):
     """Single JOIN query returns correct product count per supplier."""
     admin_client.post("/admin/suppliers/add",
-                      data={"name":"CountSup","tel":"","email":"","notes":""},
+                      data={"name":"Count Sup","tel":"","email":"","notes":""},
                       follow_redirects=True)
     for i in range(3):
         admin_client.post("/admin/products/add",
-                          data={"name":f"CountProd{i}","category":"Other","unit":"each",
+                          data={"name":f"Count Prod {i}","category":"Other","unit":"each",
                                 "cost_price":"1.00","markup_pct":"","notes":"","barcode":"",
-                                "supplier_name":"CountSup","quantity":"","reorder_threshold":"",
+                                "supplier_name":"Count Sup","quantity":"","reorder_threshold":"",
                                 "weight_kg":"","volume_litres":""})
     with app.app_context():
         from db import get_db
         row = get_db().execute(
             """SELECT s.*, COUNT(p.id) AS product_count FROM suppliers s
                LEFT JOIN products p ON p.supplier_name=s.name AND p.active=1
-               WHERE s.name='CountSup' GROUP BY s.id"""
+               WHERE s.name='Count Sup' GROUP BY s.id"""
         ).fetchone()
     assert row["product_count"] == 3

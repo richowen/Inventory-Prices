@@ -19,7 +19,7 @@ from decorators import require_admin
 from helpers import (
     cat_tree as _cat_tree_shared,
     get_pricing_config, get_setting, log_event,
-    product_snapshot, sell_price, smart_title
+    parse_weight_volume, product_snapshot, sell_price, smart_title
 )
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -212,6 +212,10 @@ def add_product():
         except (TypeError, ValueError):
             volume_litres = None
 
+        # Auto-extract weight/volume from name if user left both blank
+        if weight_kg is None and volume_litres is None:
+            weight_kg, volume_litres = parse_weight_volume(name)
+
         barcode = request.form.get("barcode", "").strip()[:_MAX_BARCODE]
         cursor = db.execute(
             """INSERT INTO products
@@ -334,12 +338,17 @@ def edit_product(pid):
         except (TypeError, ValueError):
             volume_litres = None
 
+        # Auto-extract weight/volume from name if user left both blank
+        if weight_kg is None and volume_litres is None:
+            weight_kg, volume_litres = parse_weight_volume(name)
+
         old_snap = product_snapshot(product)
         new_snap = {"name": name, "category": category, "unit": unit,
                     "supplier_name": supplier, "supplier_tel": tel,
                     "cost_price": new_cost, "markup_pct": markup,
                     "notes": notes, "barcode": barcode,
-                    "quantity": qty, "reorder_threshold": reorder}
+                    "quantity": qty, "reorder_threshold": reorder,
+                    "weight_kg": weight_kg, "volume_litres": volume_litres}
 
         old_cost = product["cost_price"]
         if abs(new_cost - old_cost) > 0.001:
@@ -682,6 +691,11 @@ def import_csv():
             (name, category, unit, supplier, tel, cost, markup,
              notes, barcode, date.today().isoformat())
         )
+        # Auto-extract weight/volume from name for CSV imports
+        wt, vol = parse_weight_volume(name)
+        if wt is not None or vol is not None:
+            db.execute("UPDATE products SET weight_kg=?, volume_litres=? WHERE id=?",
+                       (wt, vol, cursor.lastrowid))
         log_event(db, "product_added",
                   product_id=cursor.lastrowid, product_name=name,
                   changed_by=_current_user(),

@@ -3,9 +3,48 @@ Shared helper functions: pricing, rounding, audit logging, snapshots.
 """
 import json
 import math
+import re
 from datetime import datetime
 
 from db import get_db
+
+
+# ── Weight / volume extraction ────────────────────────────────────────────────
+
+_RE_KG = re.compile(r'(\d+(?:\.\d+)?)\s*kg\b', re.IGNORECASE)
+_RE_G  = re.compile(r'(?<!k)(\d+(?:\.\d+)?)\s*g\b', re.IGNORECASE)
+_RE_L  = re.compile(r'(?<!m)(\d+(?:\.\d+)?)\s*l\b', re.IGNORECASE)
+_RE_ML = re.compile(r'(\d+(?:\.\d+)?)\s*ml\b', re.IGNORECASE)
+
+
+def parse_weight_volume(name: str) -> tuple[float | None, float | None]:
+    """Extract weight_kg and volume_litres from a product name string.
+
+    Returns (weight_kg, volume_litres) — either or both may be None.
+    Uses the *last* match if multiple exist.
+    """
+    weight_kg = None
+    volume_litres = None
+
+    # Weight: prefer kg, fall back to grams
+    kg_matches = _RE_KG.findall(name)
+    if kg_matches:
+        weight_kg = float(kg_matches[-1])
+    else:
+        g_matches = _RE_G.findall(name)
+        if g_matches:
+            weight_kg = float(g_matches[-1]) / 1000
+
+    # Volume: prefer litres, fall back to ml
+    ml_matches = _RE_ML.findall(name)
+    if ml_matches:
+        volume_litres = float(ml_matches[-1]) / 1000
+    else:
+        l_matches = _RE_L.findall(name)
+        if l_matches:
+            volume_litres = float(l_matches[-1])
+
+    return weight_kg, volume_litres
 
 
 # ── Text sanitisation ─────────────────────────────────────────────────────────
@@ -101,6 +140,8 @@ def product_snapshot(p) -> dict:
         "barcode":           p["barcode"],
         "quantity":          p["quantity"],
         "reorder_threshold": p["reorder_threshold"],
+        "weight_kg":         p["weight_kg"],
+        "volume_litres":     p["volume_litres"],
         "last_updated":      p["last_updated"],
     }
 

@@ -57,9 +57,9 @@ def test_pricelist_admin_can_access(admin_client):
     assert r.status_code == 200
 
 def test_pricelist_shows_products(admin_client):
-    _add_product(admin_client, "PricelistVisibleProd", cost="12.00")
+    _add_product(admin_client, "Pricelist Visible Prod", cost="12.00")
     r = admin_client.get("/pricelist")
-    assert b"PricelistVisibleProd" in r.data
+    assert b"Pricelist Visible Prod" in r.data
 
 def test_pricelist_shows_sell_price(admin_client, app):
     with app.app_context():
@@ -109,15 +109,15 @@ def test_labels_admin_can_access(admin_client):
     assert r.status_code == 200
 
 def test_labels_shows_products(admin_client):
-    _add_product(admin_client, "LabelVisibleProd", cost="5.00")
+    _add_product(admin_client, "Label Visible Prod", cost="5.00")
     r = admin_client.get("/labels")
-    assert b"LabelVisibleProd" in r.data
+    assert b"Label Visible Prod" in r.data
 
 def test_labels_filter_by_category(admin_client):
-    _add_product(admin_client, "LabelCatProd", category="Other")
+    _add_product(admin_client, "Label Cat Prod", category="Other")
     r = admin_client.get("/labels?category=Other")
     assert r.status_code == 200
-    assert b"LabelCatProd" in r.data
+    assert b"Label Cat Prod" in r.data
 
 def test_labels_filter_unknown_category(admin_client):
     r = admin_client.get("/labels?category=NonExistentCat")

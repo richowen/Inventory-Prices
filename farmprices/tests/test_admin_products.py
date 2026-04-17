@@ -121,10 +121,10 @@ def test_bulk_delete(app, admin_client):
     assert active == 0
 
 def test_bulk_set_category(app, admin_client):
-    _add(admin_client, name="Cat Change A", category="Other")
+    _add(admin_client, name="Cat Change Alpha", category="Other")
     with app.app_context():
         from db import get_db
-        pid = get_db().execute("SELECT id FROM products WHERE name='Cat Change A'").fetchone()["id"]
+        pid = get_db().execute("SELECT id FROM products WHERE name='Cat Change Alpha'").fetchone()["id"]
     admin_client.post("/admin/products/bulk_action",
                       data={"bulk_action_type":"set_category","ids":[pid],"bulk_category_val":"Tools"},
                       follow_redirects=True)

@@ -60,10 +60,10 @@ def test_history_page2_no_crash(admin_client):
     assert r.status_code == 200
 
 def test_history_records_price_change(admin_client, app):
-    _add_product(admin_client, "PriceChangeProd", "5.00")
+    _add_product(admin_client, "Price Change Prod", "5.00")
     with app.app_context():
         from db import get_db
-        pid = get_db().execute("SELECT id FROM products WHERE name='PriceChangeProd'").fetchone()["id"]
+        pid = get_db().execute("SELECT id FROM products WHERE name='Price Change Prod'").fetchone()["id"]
     admin_client.post(f"/api/products/{pid}/update_price",
                       json={"cost_price": 9.99, "note": "price up"})
     r = admin_client.get("/admin/history?event_type=price_changed")
@@ -73,10 +73,10 @@ def test_history_records_price_change(admin_client, app):
 # ── Price history chart ────────────────────────────────────────────────────────
 
 def test_price_history_chart_loads(admin_client, app):
-    _add_product(admin_client, "ChartProd", "3.50")
+    _add_product(admin_client, "Chart Prod", "3.50")
     with app.app_context():
         from db import get_db
-        pid = get_db().execute("SELECT id FROM products WHERE name='ChartProd'").fetchone()["id"]
+        pid = get_db().execute("SELECT id FROM products WHERE name='Chart Prod'").fetchone()["id"]
     r = admin_client.get(f"/admin/products/{pid}/price_history")
     assert r.status_code == 200
 
@@ -85,10 +85,10 @@ def test_price_history_chart_404_for_unknown(admin_client):
     assert r.status_code == 404
 
 def test_price_history_chart_shows_markup(admin_client, app):
-    _add_product(admin_client, "MarkupChartProd", "10.00")
+    _add_product(admin_client, "Markup Chart Prod", "10.00")
     with app.app_context():
         from db import get_db
-        pid = get_db().execute("SELECT id FROM products WHERE name='MarkupChartProd'").fetchone()["id"]
+        pid = get_db().execute("SELECT id FROM products WHERE name='Markup Chart Prod'").fetchone()["id"]
     r = admin_client.get(f"/admin/products/{pid}/price_history")
     # Should show a numeric markup value, not "Default%"
     assert b"Default%" not in r.data

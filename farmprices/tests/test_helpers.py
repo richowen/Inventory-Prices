@@ -56,7 +56,8 @@ def test_product_snapshot():
         "name":"Test","category":"Other","unit":"each",
         "supplier_name":"X","supplier_tel":"","cost_price":1.0,
         "markup_pct":None,"notes":"","barcode":"","quantity":None,
-        "reorder_threshold":None,"last_updated":"2025-01-01"
+        "reorder_threshold":None,"weight_kg":None,"volume_litres":None,
+        "last_updated":"2025-01-01"
     })
     snap = product_snapshot(row)
     assert snap["name"] == "Test"

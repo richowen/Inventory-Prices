@@ -190,5 +190,34 @@ def init_db(app=None):
         )
         db.execute("DELETE FROM settings WHERE key='admin_password'")
 
+    # ── Backfill: extract weight/volume from product names ──────────────────
+    _backfill_weight_volume(db)
+
     db.commit()
     db.close()
+
+
+def _backfill_weight_volume(db):
+    """Scan products with NULL weight AND volume, parse from name, update.
+
+    Idempotent — only touches rows where both fields are NULL.
+    """
+    from helpers import parse_weight_volume
+
+    rows = db.execute(
+        "SELECT id, name FROM products "
+        "WHERE active=1 AND weight_kg IS NULL AND volume_litres IS NULL"
+    ).fetchall()
+
+    updated = 0
+    for row in rows:
+        wt, vol = parse_weight_volume(row["name"])
+        if wt is not None or vol is not None:
+            db.execute(
+                "UPDATE products SET weight_kg=?, volume_litres=? WHERE id=?",
+                (wt, vol, row["id"])
+            )
+            updated += 1
+
+    if updated:
+        print(f"  Backfill: extracted weight/volume for {updated} product(s).")

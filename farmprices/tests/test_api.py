@@ -32,18 +32,18 @@ def test_search_empty_returns_list(admin_client):
     assert isinstance(data, list)
 
 def test_search_by_name(admin_client):
-    _add_product(admin_client, "UniqueSearchName")
-    data = admin_client.get("/api/search?q=UniqueSearchName").get_json()
-    assert any(p["name"] == "UniqueSearchName" for p in data)
+    _add_product(admin_client, "Unique Search Name")
+    data = admin_client.get("/api/search?q=Unique Search Name").get_json()
+    assert any(p["name"] == "Unique Search Name" for p in data)
 
 def test_search_no_match(admin_client):
     data = admin_client.get("/api/search?q=zzznoresults999").get_json()
     assert data == []
 
 def test_search_by_barcode(admin_client):
-    _add_product(admin_client, "BarcodeSearchProd", barcode="TEST123456")
+    _add_product(admin_client, "Barcode Search Prod", barcode="TEST123456")
     data = admin_client.get("/api/search?barcode=TEST123456").get_json()
-    assert any(p["name"] == "BarcodeSearchProd" for p in data)
+    assert any(p["name"] == "Barcode Search Prod" for p in data)
 
 def test_search_admin_sees_cost_price(admin_client):
     _add_product(admin_client, "CostVisibleProd", "7.50")
@@ -179,8 +179,8 @@ def test_delete_unit_requires_admin(sales_client):
 # ── /api/products/<pid>/update_price ──────────────────────────────────────────
 
 def test_update_price(admin_client, app):
-    _add_product(admin_client, "UpdatePriceProd", "5.00")
-    pid = _get_pid(app, "UpdatePriceProd")
+    _add_product(admin_client, "Update Price Prod", "5.00")
+    pid = _get_pid(app, "Update Price Prod")
     r = admin_client.post(f"/api/products/{pid}/update_price", json={"cost_price": 8.50})
     assert r.status_code == 200
     data = r.get_json()
@@ -188,14 +188,14 @@ def test_update_price(admin_client, app):
     assert data["cost_price"] == 8.50
 
 def test_update_price_invalid(admin_client, app):
-    _add_product(admin_client, "InvalidPriceProd", "5.00")
-    pid = _get_pid(app, "InvalidPriceProd")
+    _add_product(admin_client, "Invalid Price Prod", "5.00")
+    pid = _get_pid(app, "Invalid Price Prod")
     r = admin_client.post(f"/api/products/{pid}/update_price", json={"cost_price": "abc"})
     assert r.status_code == 400
 
 def test_update_price_negative(admin_client, app):
-    _add_product(admin_client, "NegPriceProd", "5.00")
-    pid = _get_pid(app, "NegPriceProd")
+    _add_product(admin_client, "Neg Price Prod", "5.00")
+    pid = _get_pid(app, "Neg Price Prod")
     r = admin_client.post(f"/api/products/{pid}/update_price", json={"cost_price": -1})
     assert r.status_code == 400
 
@@ -216,8 +216,8 @@ def test_update_price_requires_admin(sales_client, app):
     assert r.status_code in (302, 403)
 
 def test_update_price_creates_history(admin_client, app):
-    _add_product(admin_client, "HistoryPriceProd", "5.00")
-    pid = _get_pid(app, "HistoryPriceProd")
+    _add_product(admin_client, "History Price Prod", "5.00")
+    pid = _get_pid(app, "History Price Prod")
     admin_client.post(f"/api/products/{pid}/update_price", json={"cost_price": 9.99})
     with app.app_context():
         from db import get_db
@@ -239,16 +239,16 @@ def test_update_price_same_value_no_history(admin_client, app):
         assert count == 0
 
 def test_update_price_returns_sell_price(admin_client, app):
-    _add_product(admin_client, "SellCheckProd", "10.00")
-    pid = _get_pid(app, "SellCheckProd")
+    _add_product(admin_client, "Sell Check Prod", "10.00")
+    pid = _get_pid(app, "Sell Check Prod")
     r = admin_client.post(f"/api/products/{pid}/update_price", json={"cost_price": 10.00})
     data = r.get_json()
     assert "sell_price" in data
     assert data["sell_price"] > 0
 
 def test_update_price_with_note(admin_client, app):
-    _add_product(admin_client, "NotedPriceProd", "5.00")
-    pid = _get_pid(app, "NotedPriceProd")
+    _add_product(admin_client, "Noted Price Prod", "5.00")
+    pid = _get_pid(app, "Noted Price Prod")
     r = admin_client.post(f"/api/products/{pid}/update_price",
                           json={"cost_price": 7.00, "note": "Supplier increase"})
     assert r.get_json()["ok"] is True
